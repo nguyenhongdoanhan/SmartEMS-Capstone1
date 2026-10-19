@@ -1,0 +1,54 @@
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_USER: smartems
+      POSTGRES_PASSWORD: smartems
+      POSTGRES_DB: smartems
+    ports: ["5432:5432"]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - ./database:/seed:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U smartems"]
+      interval: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+
+  backend:
+    build: ./backend
+    env_file: ./backend/.env
+    ports: ["8000:8000"]
+    volumes: ["./backend:/app"]
+    depends_on:
+      db: { condition: service_healthy }
+      redis: { condition: service_started }
+
+  dispatcher-web:
+    build: ./dispatcher-web
+    ports: ["5173:5173"]
+    volumes: ["./dispatcher-web:/app", "/app/node_modules"]
+    env_file: ./dispatcher-web/.env
+
+  # Self-hosted routing. Needs prepared OSM data, see docker/osrm/README.md
+  osrm:
+    image: osrm/osrm-backend
+    profiles: ["routing"]
+    command: osrm-routed --algorithm mld /data/region.osrm
+    volumes: ["./docker/osrm/data:/data"]
+    ports: ["5000:5000"]
+
+  # Reverse proxy for a production-like demo: docker compose --profile prod up
+  nginx:
+    image: nginx:alpine
+    profiles: ["prod"]
+    volumes: ["./docker/nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro"]
+    ports: ["80:80"]
+    depends_on: [backend, dispatcher-web]
+
+volumes:
+  pgdata:

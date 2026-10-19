@@ -1,0 +1,8 @@
+{
+  "id": "cpr",
+  "title": "CPR (general guidance)",
+  "steps": [
+    "TODO: write reviewed first-aid steps. Bundled offline in the app, no API call.",
+    "Show a disclaimer: general guidance only, not medical advice."
+  ]
+}
