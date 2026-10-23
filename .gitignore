@@ -1,11 +1,27 @@
 __pycache__/
 *.pyc
 .venv/
-.env
 node_modules/
 dist/
 .expo/
+.expo-shared/
 docker/osrm/data/
 .pytest_cache/
 .idea/
 .vscode/
+
+# env files (chua key/token - KHONG BAO GIO commit)
+.env
+.env.*
+!.env.example
+
+# expo / react-native
+*.log
+.expo/
+*.tsbuildinfo
+web-build/
+coverage/
+
+# os / editor
+.DS_Store
+*.swp
