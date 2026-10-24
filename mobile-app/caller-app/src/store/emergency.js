@@ -13,6 +13,7 @@ import { create } from 'zustand';
 import { connectSocket } from '../services/socket';
 import { emergencyApi } from '../services';
 import { mockEngine } from '../services/mock/mockEngine';
+import { archiveTrip } from './history';
 
 /** State rỗng của 1 chuyến - factory để tránh share tham chiếu mảng route giữa các chuyến. */
 const emptyTrip = () => ({
@@ -68,15 +69,17 @@ export const useEmergencyStore = create((set, get) => ({
     return emergency;
   },
 
-  /** Hủy yêu cầu đang ghép xe (C-03) - backend chưa có endpoint, mock hủy luôn. */
+  /** Hủy yêu cầu đang ghép xe (C-03) - backend chưa có endpoint, mock hủy luôn.
+   *  Trước khi dọn state: chụp snapshot vào history (C-08/C-09) với status CANCELED. */
   cancelSOS: async () => {
-    const { emergency } = get();
+    const { emergency, timeline, ambulance, hospital, tripDistanceKm, rating } = get();
     if (!emergency) return;
     try {
       await emergencyApi.cancelSOS(emergency.id);
     } catch (err) {
       // backend thật chưa có DELETE /emergencies (TODO) - vẫn hủy phía FE để user thoát
     }
+    archiveTrip({ emergency, timeline, ambulance, hospital, tripDistanceKm, rating, status: 'CANCELED' });
     mockEngine.cancelTrip();
     set({ emergency: null, timeline: [], ...emptyTrip() });
   },

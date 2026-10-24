@@ -14,31 +14,17 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppButton, StarRating } from '../../../components';
 import { useEmergencyStore } from '../../../store/emergency';
-import { emergencyCode } from '../../../constants/trip';
+import { archiveTrip } from '../../../store/history';
+import { emergencyCode, formatHm, formatMinutesSeconds, secondsBetween } from '../../../constants/trip';
 import { colors, fontSize, fontWeight, radius, spacing } from '../../../theme';
 
-function secondsBetween(aIso, bIso) {
-  try {
-    return Math.max(0, Math.round((new Date(bIso).getTime() - new Date(aIso).getTime()) / 1000));
-  } catch (err) {
-    return null;
-  }
-}
-
-/** "8'24\"" - phút + giây như mockup C-05. */
+/** "8'24\"" - phút + giây như mockup C-05 (null -> "—", cùng helper dùng cho C-08/C-09). */
 function formatResponse(totalSeconds) {
-  if (totalSeconds == null) return '—';
-  const m = Math.floor(totalSeconds / 60);
-  const s = totalSeconds % 60;
-  return `${m}'${String(s).padStart(2, '0')}"`;
+  return formatMinutesSeconds(totalSeconds) ?? '—';
 }
 
 function formatClock(iso) {
-  try {
-    return new Date(iso).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
-  } catch (err) {
-    return '';
-  }
+  return formatHm(iso) || '';
 }
 
 export default function CompletionScreen({ navigation }) {
@@ -77,6 +63,19 @@ export default function CompletionScreen({ navigation }) {
     setLeaving(true);
     try {
       await submitRating(stars); // mock lưu luôn; backend thật thiếu endpoint cũng không chặn
+      // Chụp snapshot vào lịch sử (C-08/C-09) TRƯỚC KHI clear() dọn state
+      const snap = useEmergencyStore.getState();
+      if (snap.emergency) {
+        archiveTrip({
+          emergency: snap.emergency,
+          timeline: snap.timeline,
+          ambulance: snap.ambulance,
+          hospital: snap.hospital,
+          tripDistanceKm: snap.tripDistanceKm,
+          rating: snap.rating ?? stars,
+          status: 'TRIP_COMPLETED',
+        });
+      }
       clear();
       navigation.popToTop();
     } finally {
