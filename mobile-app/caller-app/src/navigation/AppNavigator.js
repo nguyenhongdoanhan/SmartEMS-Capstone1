@@ -27,7 +27,9 @@ import RoleChoiceScreen from '../screens/auth/RoleChoice';
 import CallerTabs from './CallerTabs';
 import DriverComingSoonScreen from '../screens/driver/ComingSoon';
 import SOSScreen from '../screens/caller/SOS';
+import MatchingScreen from '../screens/caller/Matching';
 import TrackingScreen from '../screens/caller/Tracking';
+import CompletionScreen from '../screens/caller/Completion';
 import SettingsScreen from '../screens/caller/Settings';
 
 const Stack = createNativeStackNavigator();
@@ -118,9 +120,22 @@ export default function AppNavigator() {
           <Stack.Screen name="CallerTabs" component={CallerTabs} options={{ headerShown: false }} />
         ) : null}
 
-        {/* Đăng ký ở root: navigate() từ trong tab tìm thấy, và che bottom tab khi push */}
-        <Stack.Screen name="SOS" component={SOSScreen} options={{ title: 'Gửi cứu thương' }} />
-        <Stack.Screen name="Tracking" component={TrackingScreen} options={{ title: 'Theo dõi tình trạng' }} />
+        {/* Đăng ký ở root: navigate() từ trong tab tìm thấy, và che bottom tab khi push.
+            Luồng GĐ3: C-01 giữ nút SOS -> SOS (C-02) -> replace Matching (C-03)
+            -> tự replace Tracking (C-04) khi xe lên đường -> tự replace Completion (C-05)
+            khi TRIP_COMPLETED -> "Về trang chủ" popToTop về tab. */}
+        <Stack.Screen
+          name="SOS"
+          component={SOSScreen}
+          options={{ title: 'Xác nhận vị trí của bạn', headerStyle: { backgroundColor: colors.primary } }}
+        />
+        <Stack.Screen
+          name="Matching"
+          component={MatchingScreen}
+          options={{ headerShown: false, contentStyle: { backgroundColor: colors.surface } }}
+        />
+        <Stack.Screen name="Tracking" component={TrackingScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="Completion" component={CompletionScreen} options={{ headerShown: false }} />
         <Stack.Screen
           name="Settings"
           component={SettingsScreen}
