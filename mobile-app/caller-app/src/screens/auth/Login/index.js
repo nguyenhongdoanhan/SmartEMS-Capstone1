@@ -113,7 +113,14 @@ export default function LoginScreen({ navigation }) {
               </View>
             )}
 
-            <AppButton title="Đăng nhập" size="lg" onPress={submit} disabled={!canSubmit} loading={loading} />
+            <AppButton
+              title="Đăng nhập"
+              size="lg"
+              onPress={submit}
+              disabled={!canSubmit}
+              loading={loading}
+              style={styles.submitBtn}
+            />
 
             <View style={styles.registerRow}>
               <Text style={styles.registerPrefix}>hoặc </Text>
@@ -204,6 +211,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.s,
   },
   errorText: { color: colors.error, fontSize: fontSize.s },
+  submitBtn: { marginTop: spacing.xl },
   registerRow: {
     flexDirection: 'row',
     justifyContent: 'center',
