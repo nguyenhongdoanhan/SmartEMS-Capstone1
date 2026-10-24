@@ -54,6 +54,7 @@ export const emergencyApi = {
       priority: data.priority || 2, // giống default của model Emergency bên backend (1 critical ... 3 low)
       description: data.description || null,
       address: data.address || null, // FE tự reverse geocode, backend chưa lưu (TODO #10)
+      medical: data.medical || null, // hồ sơ y tế khẩn cấp gộp payload (GĐ4, TODO #7)
       latitude: data.latitude,
       longitude: data.longitude,
       created_at: new Date().toISOString(),

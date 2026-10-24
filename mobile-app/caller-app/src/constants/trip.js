@@ -40,3 +40,40 @@ export function isFinalStatus(status) {
 export function isMatchingStatus(status) {
   return MATCHING_STATUSES.includes(status);
 }
+
+/** Số giây giữa 2 ISO timestamp (an toàn: lỗi date -> null, âm -> 0). */
+export function secondsBetween(aIso, bIso) {
+  try {
+    const ms = new Date(bIso).getTime() - new Date(aIso).getTime();
+    if (Number.isNaN(ms)) return null;
+    return Math.max(0, Math.round(ms / 1000));
+  } catch (err) {
+    return null;
+  }
+}
+
+/** "8'24\"" - định dạng phút'giây" dùng cho metric phản hồi (C-05/C-08/C-09). */
+export function formatMinutesSeconds(totalSeconds) {
+  if (totalSeconds == null) return null;
+  const m = Math.floor(totalSeconds / 60);
+  const s = totalSeconds % 60;
+  return `${m}'${String(s).padStart(2, '0')}"`;
+}
+
+/** "26/08" từ ISO timestamp (dùng cho card lịch sử C-08). */
+export function formatDayMonth(iso) {
+  try {
+    return new Date(iso).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
+  } catch (err) {
+    return '';
+  }
+}
+
+/** "12:12" từ ISO timestamp. */
+export function formatHm(iso) {
+  try {
+    return new Date(iso).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+  } catch (err) {
+    return '';
+  }
+}
