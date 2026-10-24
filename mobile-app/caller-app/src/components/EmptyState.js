@@ -5,7 +5,7 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-import { AppButton } from './AppButton';
+import AppButton from './AppButton';
 import { colors, fontSize, fontWeight, radius, spacing } from '../theme';
 
 export default function EmptyState({ icon = 'file-tray-outline', title, message, actionTitle, onAction, style }) {
