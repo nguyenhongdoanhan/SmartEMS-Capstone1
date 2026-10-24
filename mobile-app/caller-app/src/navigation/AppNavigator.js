@@ -46,7 +46,7 @@ function Splash() {
         <Text style={styles.wordEms}>EMS</Text>
       </View>
       <Text style={styles.slogan}>Điều phối cứu thương thời gian thực</Text>
-      <Text style={styles.slogan2}>Phản hồi trong «giờ vàng»</Text>
+      <Text style={styles.slogan2}>Phản hồi trong "giờ vàng"</Text>
       <DotsLoader style={styles.loader} />
       <Text style={styles.footer}>Nguồn mẫu học thuật · Không thay thế dịch vụ 115</Text>
     </View>
