@@ -2,6 +2,8 @@
  * Nút SOS tròn giữ 2 giây (C-01) - đúng mockup: tròn đỏ lớn >= 200px, glow,
  * chữ "SOS" + "NHẤN GIỜ 2 GIÂY", progress ring ĐỎ chạy quanh khi đang giữ.
  * Thả sớm -> ring co về 0 (hủy); giữ đủ 2s -> onComplete() (sang C-02).
+ * Feedback chạm: nút PHÌNH TO dần khi đang giữ (spring scale 1.15x),
+ * THU NHỎ về kích thước cũ khi thả / khi gửi xong.
  * Ring dùng react-native-svg (Expo Go nhúng sẵn native module, không cần config).
  */
 import React, { useEffect, useRef } from 'react';
@@ -21,6 +23,7 @@ const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 export default function SosHoldButton({ onComplete, hint = 'NHẤN GIỜ 2 GIÂY' }) {
   const progress = useRef(new Animated.Value(0)).current;
+  const scale = useRef(new Animated.Value(1)).current; // phình to khi giữ, co lại khi thả
   const holding = useRef(false);
   const anim = useRef(null);
 
@@ -35,6 +38,8 @@ export default function SosHoldButton({ onComplete, hint = 'NHẤN GIỜ 2 GIÂY
   const startHold = () => {
     if (holding.current) return;
     holding.current = true;
+    // giữ -> nút phình to lên dần (transform chạy native driver)
+    Animated.spring(scale, { toValue: 1.15, friction: 4, tension: 50, useNativeDriver: true }).start();
     anim.current = Animated.timing(progress, {
       toValue: 1,
       duration: HOLD_MS,
@@ -45,6 +50,8 @@ export default function SosHoldButton({ onComplete, hint = 'NHẤN GIỜ 2 GIÂY
       if (finished && holding.current) {
         holding.current = false;
         progress.setValue(0);
+        // gửi xong -> co về kích thước cũ (phòng khi màn chưa kịp unmount)
+        Animated.spring(scale, { toValue: 1, friction: 3, tension: 45, useNativeDriver: true }).start();
         onComplete?.();
       }
     });
@@ -56,6 +63,8 @@ export default function SosHoldButton({ onComplete, hint = 'NHẤN GIỜ 2 GIÂY
     anim.current?.stop();
     // thả sớm -> ring co về 0 kiểu spring cho tự nhiên
     Animated.spring(progress, { toValue: 0, useNativeDriver: false, friction: 7, tension: 60 }).start();
+    // thả -> nút nhỏ dần về kích thước cũ
+    Animated.spring(scale, { toValue: 1, friction: 3, tension: 45, useNativeDriver: true }).start();
   };
 
   const strokeOffset = progress.interpolate({
@@ -94,16 +103,19 @@ export default function SosHoldButton({ onComplete, hint = 'NHẤN GIỜ 2 GIÂY
         </Svg>
       </View>
 
-      <Pressable
-        style={({ pressed }) => [styles.btn, pressed && styles.btnPressed]}
-        onPressIn={startHold}
-        onPressOut={cancelHold}
-      >
-        {/* Highlight trắng nhẹ phía trên tạo cảm giác gradient 3D như mockup */}
-        <View style={styles.highlight} pointerEvents="none" />
-        <Text style={styles.sos}>SOS</Text>
-        <Text style={styles.hint}>{hint}</Text>
-      </Pressable>
+      {/* Scale quanh nút đỏ: phình to khi giữ (1.15x vẫn nằm gọn trong ring), co lại khi thả */}
+      <Animated.View style={{ transform: [{ scale }] }}>
+        <Pressable
+          style={({ pressed }) => [styles.btn, pressed && styles.btnPressed]}
+          onPressIn={startHold}
+          onPressOut={cancelHold}
+        >
+          {/* Highlight trắng nhẹ phía trên tạo cảm giác gradient 3D như mockup */}
+          <View style={styles.highlight} pointerEvents="none" />
+          <Text style={styles.sos}>SOS</Text>
+          <Text style={styles.hint}>{hint}</Text>
+        </Pressable>
+      </Animated.View>
     </View>
   );
 }
@@ -137,7 +149,8 @@ const styles = StyleSheet.create({
     shadowRadius: 14,
     shadowOffset: { width: 0, height: 6 },
   },
-  btnPressed: { backgroundColor: colors.primaryDark, transform: [{ scale: 0.97 }] },
+  // KHÔNG để transform trong btnPressed - scale đã do Animated spring quản (tránh double-scale)
+  btnPressed: { backgroundColor: colors.primaryDark },
   highlight: {
     position: 'absolute',
     top: 0,
