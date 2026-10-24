@@ -1,9 +1,11 @@
 /**
- * Điều hướng chính (unified 1-app-2-vai).
- * Root stack: Splash -> (chưa đăng nhập) Login -> (đã đăng nhập):
- *   - currentRole = 'caller' -> CallerTabs (bottom nav 4 tab)
- *   - currentRole = 'driver' -> DriverComingSoon (Giai đoạn 2+ thay bằng DriverStack)
+ * Điều hướng chính (unified 1-app-2-vai) - Giai đoạn 2.
+ * Luồng: Splash -> Onboarding (chỉ lần đầu) -> Login / Đăng ký 3 bước OTP
+ *   -> M-05 Chọn vai trò -> CallerTabs (bottom nav 4 tab) / DriverComingSoon.
+ * currentRole = null (chưa chọn) -> RoleChoice (thay default 'caller' của GĐ1).
  * SOS / Tracking / Settings push ở mức ROOT để che bottom tab (C-04 là map full màn).
+ * Lưu ý: KHÔNG bọc Stack.Screen trong Fragment - React.Children.forEach của
+ * react-navigation không duyệt vào trong Fragment nên screen sẽ không đăng ký.
  */
 import React, { useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
@@ -16,7 +18,12 @@ import { useEmergencyStore } from '../store/emergency';
 import { colors, fontSize, fontWeight, radius, spacing } from '../theme';
 import DotsLoader from '../components/DotsLoader';
 
+import OnboardingScreen from '../screens/onboarding/Onboarding';
 import LoginScreen from '../screens/auth/Login';
+import RegisterPhoneScreen from '../screens/auth/RegisterPhone';
+import RegisterOtpScreen from '../screens/auth/RegisterOtp';
+import RegisterProfileScreen from '../screens/auth/RegisterProfile';
+import RoleChoiceScreen from '../screens/auth/RoleChoice';
 import CallerTabs from './CallerTabs';
 import DriverComingSoonScreen from '../screens/driver/ComingSoon';
 import SOSScreen from '../screens/caller/SOS';
@@ -57,7 +64,7 @@ function Splash() {
 const SPLASH_MIN_MS = 1600;
 
 export default function AppNavigator() {
-  const { token, ready, currentRole, init } = useAuthStore();
+  const { token, ready, currentRole, onboarded, init } = useAuthStore();
   const connectRealtime = useEmergencyStore((s) => s.connectRealtime);
   const [splashMinDone, setSplashMinDone] = useState(false);
 
@@ -79,17 +86,37 @@ export default function AppNavigator() {
     <NavigationContainer>
       <StatusBar style="light" />
       <Stack.Navigator screenOptions={SCREEN_OPTIONS}>
+        {/* ===== Chưa đăng nhập: Onboarding (lần đầu) -> Login + Đăng ký 3 bước OTP ===== */}
+        {!token && !onboarded ? (
+          <Stack.Screen name="Onboarding" component={OnboardingScreen} options={{ headerShown: false }} />
+        ) : null}
         {!token ? (
           <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
-        ) : currentRole === 'driver' ? (
+        ) : null}
+        {!token ? (
+          <Stack.Screen name="RegisterPhone" component={RegisterPhoneScreen} options={{ headerShown: false }} />
+        ) : null}
+        {!token ? (
+          <Stack.Screen name="RegisterOtp" component={RegisterOtpScreen} options={{ headerShown: false }} />
+        ) : null}
+        {!token ? (
+          <Stack.Screen name="RegisterProfile" component={RegisterProfileScreen} options={{ headerShown: false }} />
+        ) : null}
+
+        {/* ===== Đã đăng nhập nhưng chưa chọn vai trò -> M-05 (thay default 'caller') ===== */}
+        {token && !currentRole ? (
+          <Stack.Screen name="RoleChoice" component={RoleChoiceScreen} options={{ headerShown: false }} />
+        ) : null}
+        {token && currentRole === 'driver' ? (
           <Stack.Screen
             name="DriverComingSoon"
             component={DriverComingSoonScreen}
             options={{ headerShown: false }}
           />
-        ) : (
+        ) : null}
+        {token && currentRole === 'caller' ? (
           <Stack.Screen name="CallerTabs" component={CallerTabs} options={{ headerShown: false }} />
-        )}
+        ) : null}
 
         {/* Đăng ký ở root: navigate() từ trong tab tìm thấy, và che bottom tab khi push */}
         <Stack.Screen name="SOS" component={SOSScreen} options={{ title: 'Gửi cứu thương' }} />
