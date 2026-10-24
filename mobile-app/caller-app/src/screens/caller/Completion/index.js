@@ -166,7 +166,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: spacing.l,
   },
-  metricValue: { color: colors.primary, fontSize: fontSize.xl, fontWeight: fontWeight.bold },
+  metricValue: { color: colors.success, fontSize: fontSize.xl, fontWeight: fontWeight.bold }, // xanh lá cây - chỉ số đạt "giờ vàng"
   metricLabel: { color: colors.textSecondary, fontSize: fontSize.xs, marginTop: 2 },
   metricNote: { color: colors.textMuted, fontSize: fontSize.xs, textAlign: 'center', marginTop: spacing.s },
 
