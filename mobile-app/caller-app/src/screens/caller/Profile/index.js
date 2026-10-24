@@ -1,6 +1,10 @@
 /**
- * C-10 · Hồ sơ (khung Giai đoạn 1 - đã nối chức năng: đổi vai trò, cài đặt, đăng xuất).
- * Giai đoạn 4: hồ sơ y tế khẩn cấp (AsyncStorage, gửi kèm SOS), sửa thông tin, skin đầy đủ.
+ * C-10 · Hồ sơ (y tế khẩn cấp):
+ * - "Hồ sơ": avatar chữ + tên + SĐT · Caller + nút Sửa (màn MedicalProfile)
+ * - Card hồng "🩺 Hồ sơ y tế khẩn cấp · ● Gửi kèm SOS": nhóm máu · dị ứng /
+ *   bệnh nền · người thân - đọc từ store/medical (AsyncStorage, gửi kèm SOS)
+ * - Menu: 🏠 Địa chỉ thường trú (mở editor) / 🚑 "Chuyển vai trò tài xế" / ⚙️ Cài đặt
+ * - Nút "Đăng xuất" (chữ đỏ, nền xám)
  */
 import React from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -8,18 +12,19 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { useAuthStore } from '../../../store/auth';
 import { useEmergencyStore } from '../../../store/emergency';
+import { useMedicalStore, isEmptyMedical } from '../../../store/medical';
 import { Card } from '../../../components';
 import { colors, fontSize, fontWeight, radius, spacing } from '../../../theme';
 
-const COMING_SOON = () =>
-  Alert.alert('Thông báo', 'Tính năng sẽ hoàn thiện ở giai đoạn tiếp theo.');
-
-function MenuRow({ icon, label, onPress, danger = false }) {
+function MenuRow({ icon, label, subLabel, onPress, danger = false }) {
   return (
     <Pressable style={({ pressed }) => [styles.menuRow, pressed && styles.pressed]} onPress={onPress}>
       <Ionicons name={icon} size={20} color={danger ? colors.primary : colors.textSecondary} />
-      <Text style={[styles.menuLabel, danger && styles.menuLabelDanger]}>{label}</Text>
-      {!danger && <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />}
+      <View style={styles.menuInfo}>
+        <Text style={[styles.menuLabel, danger && styles.menuLabelDanger]}>{label}</Text>
+        {subLabel ? <Text style={styles.menuSub} numberOfLines={1}>{subLabel}</Text> : null}
+      </View>
+      <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
     </Pressable>
   );
 }
@@ -27,6 +32,10 @@ function MenuRow({ icon, label, onPress, danger = false }) {
 export default function ProfileScreen({ navigation }) {
   const { user, setRole, logout } = useAuthStore();
   const { disconnectRealtime, clear } = useEmergencyStore();
+  const profile = useMedicalStore((s) => s.profile);
+  const hasMedical = !isEmptyMedical(profile);
+
+  const openMedical = () => navigation.navigate('MedicalProfile');
 
   const handleLogout = () => {
     Alert.alert('Đăng xuất', 'Bạn chắc chắn muốn đăng xuất?', [
@@ -60,23 +69,54 @@ export default function ProfileScreen({ navigation }) {
         </View>
       </View>
 
-      {/* Card hồ sơ y tế khẩn cấp - Giai đoạn 4 bổ sung nội dung thật */}
+      {/* Card hồ sơ y tế khẩn cấp - GĐ4: nội dung thật, gửi kèm SOS (mockup C-10) */}
       <Card style={styles.medicalCard}>
         <View style={styles.medicalHeader}>
           <Ionicons name="medkit-outline" size={18} color={colors.primary} />
           <Text style={styles.medicalTitle}>Hồ sơ y tế khẩn cấp</Text>
           <View style={styles.medicalDot} />
           <Text style={styles.medicalSend}>Gửi kèm SOS</Text>
+          <View style={styles.flexSpace} />
+          <Pressable onPress={openMedical} hitSlop={8} accessibilityLabel="Sửa hồ sơ y tế">
+            <Text style={styles.medicalEdit}>{hasMedical ? 'Sửa' : 'Thêm'}</Text>
+          </Pressable>
         </View>
-        <Text style={styles.medicalNote}>
-          Nhóm máu, dị ứng, bệnh nền và liên hệ người thân sẽ được hoàn thiện ở giai đoạn tiếp
-          theo và tự động gửi kèm mỗi yêu cầu SOS.
-        </Text>
+        {hasMedical ? (
+          <View>
+            <Text style={styles.medicalLine}>
+              {[
+                profile.bloodType ? `Nhóm máu: ${profile.bloodType}` : null,
+                profile.allergies ? `Dị ứng: ${profile.allergies}` : null,
+              ]
+                .filter(Boolean)
+                .join(' · ') || 'Chưa cập nhật'}
+            </Text>
+            <Text style={styles.medicalLine}>
+              {[
+                profile.conditions ? `Bệnh nền: ${profile.conditions}` : null,
+                profile.contactPhone
+                  ? `Người thân: ${profile.contactName ? `${profile.contactName} · ` : ''}${profile.contactPhone}`
+                  : null,
+              ]
+                .filter(Boolean)
+                .join(' · ') || 'Chưa cập nhật'}
+            </Text>
+          </View>
+        ) : (
+          <Text style={styles.medicalNote}>
+            Thêm nhóm máu, dị ứng, bệnh nền và người thân để tài xế - bệnh viện kịp thời ứng phó khi bạn gửi SOS.
+          </Text>
+        )}
       </Card>
 
-      {/* Menu */}
+      {/* Menu - mockup C-10 */}
       <Card padded={false} style={styles.menuCard}>
-        <MenuRow icon="location-outline" label="Địa chỉ thường trú" onPress={COMING_SOON} />
+        <MenuRow
+          icon="location-outline"
+          label="Địa chỉ thường trú"
+          subLabel={profile?.homeAddress || 'Chưa đặt'}
+          onPress={openMedical}
+        />
         <View style={styles.menuDivider} />
         <MenuRow icon="car-outline" label="Chuyển vai trò tài xế" onPress={() => setRole('driver')} />
         <View style={styles.menuDivider} />
@@ -124,6 +164,9 @@ const styles = StyleSheet.create({
   medicalTitle: { fontSize: fontSize.m, fontWeight: fontWeight.semibold, color: colors.text },
   medicalDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.success },
   medicalSend: { fontSize: fontSize.xs, color: colors.successStrong },
+  flexSpace: { flex: 1 },
+  medicalEdit: { color: colors.blue, fontSize: fontSize.s, fontWeight: fontWeight.semibold },
+  medicalLine: { fontSize: fontSize.s, color: colors.text, marginTop: spacing.s, lineHeight: 20 },
   medicalNote: { fontSize: fontSize.s, color: colors.textSecondary, marginTop: spacing.s, lineHeight: 20 },
 
   menuCard: { marginBottom: spacing.l },
@@ -135,7 +178,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.l,
     minHeight: 52,
   },
-  menuLabel: { flex: 1, fontSize: fontSize.m, color: colors.text },
+  menuLabel: { flexShrink: 1, fontSize: fontSize.m, color: colors.text },
+  menuInfo: { flex: 1, marginRight: spacing.s },
+  menuSub: { fontSize: fontSize.xs, color: colors.textMuted, marginTop: 2 },
   menuLabelDanger: { color: colors.primary },
   menuDivider: { height: 1, backgroundColor: colors.border, marginLeft: spacing.l + 20 + spacing.m },
 

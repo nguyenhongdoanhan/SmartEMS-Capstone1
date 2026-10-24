@@ -16,6 +16,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppButton } from '../../../components';
 import { getCurrentLocation, reverseGeocodeAddress } from '../../../services/location';
 import { useEmergencyStore } from '../../../store/emergency';
+import { useMedicalStore } from '../../../store/medical';
+import { useSettingsStore } from '../../../store/settings';
 import { isFinalStatus, isMatchingStatus, statusLabel } from '../../../constants/trip';
 import { colors, fontSize, fontWeight, radius, spacing } from '../../../theme';
 
@@ -27,6 +29,7 @@ const PRIORITIES = [
 
 export default function SOSScreen({ navigation }) {
   const { emergency, createSOS } = useEmergencyStore();
+  const shareGps = useSettingsStore((s) => s.shareGps); // cảnh báo khi user tắt GPS (C-11)
   const [location, setLocation] = useState(null);
   const [locating, setLocating] = useState(true);
   const [locError, setLocError] = useState(null);
@@ -69,6 +72,8 @@ export default function SOSScreen({ navigation }) {
         address: address.trim() || null,
         description: description.trim() || null,
         priority,
+        // Hồ sơ y tế khẩn cấp (C-10) gộp vào payload - backend TODO #7
+        medical: useMedicalStore.getState().snapshotForSOS(),
       });
       navigation.replace('Matching');
     } catch (err) {
@@ -145,6 +150,11 @@ export default function SOSScreen({ navigation }) {
         {location && (
           <Text style={styles.accuracy}>
             📍 Độ chính xác GPS: ±{Math.max(1, Math.round(location.accuracy || 5))} m
+          </Text>
+        )}
+        {!shareGps && (
+          <Text style={styles.gpsOffNote}>
+            ⚠️ Bạn đã tắt "Chia sẻ GPS khi SOS" trong Cài đặt — yêu cầu SOS vẫn cần vị trí này để điều phối xe tới đúng chỗ.
           </Text>
         )}
 
@@ -252,6 +262,13 @@ const styles = StyleSheet.create({
   },
   retryBtnText: { color: colors.textOnPrimary, fontSize: fontSize.s, fontWeight: fontWeight.medium },
   accuracy: { color: colors.textSecondary, fontSize: fontSize.xs, marginTop: spacing.s, marginBottom: spacing.l },
+  gpsOffNote: {
+    color: colors.warning,
+    fontSize: fontSize.xs,
+    marginTop: -spacing.s,
+    marginBottom: spacing.l,
+    lineHeight: 17,
+  },
 
   label: {
     fontSize: fontSize.xs,

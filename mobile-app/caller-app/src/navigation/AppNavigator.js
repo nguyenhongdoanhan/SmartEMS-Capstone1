@@ -15,6 +15,9 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { useAuthStore } from '../store/auth';
 import { useEmergencyStore } from '../store/emergency';
+import { useHistoryStore } from '../store/history';
+import { useMedicalStore } from '../store/medical';
+import { useSettingsStore } from '../store/settings';
 import { colors, fontSize, fontWeight, radius, spacing } from '../theme';
 import DotsLoader from '../components/DotsLoader';
 
@@ -31,6 +34,9 @@ import MatchingScreen from '../screens/caller/Matching';
 import TrackingScreen from '../screens/caller/Tracking';
 import CompletionScreen from '../screens/caller/Completion';
 import SettingsScreen from '../screens/caller/Settings';
+import FirstAidDetailScreen from '../screens/caller/FirstAidDetail';
+import HistoryDetailScreen from '../screens/caller/HistoryDetail';
+import MedicalProfileScreen from '../screens/caller/MedicalProfile';
 
 const Stack = createNativeStackNavigator();
 
@@ -72,6 +78,10 @@ export default function AppNavigator() {
 
   useEffect(() => {
     init();
+    // GĐ4: khôi phục dữ liệu local (lịch sử, hồ sơ y tế, cài đặt) song song auth
+    useHistoryStore.getState().init();
+    useMedicalStore.getState().init();
+    useSettingsStore.getState().init();
     const timer = setTimeout(() => setSplashMinDone(true), SPLASH_MIN_MS);
     return () => clearTimeout(timer);
   }, []);
@@ -141,6 +151,25 @@ export default function AppNavigator() {
           component={SettingsScreen}
           options={{
             title: 'Cài đặt',
+            headerStyle: { backgroundColor: colors.surface },
+            headerTintColor: colors.text,
+          }}
+        />
+        <Stack.Screen
+          name="FirstAidDetail"
+          component={FirstAidDetailScreen}
+          options={{ title: 'Hướng dẫn sơ cứu' }} // tự set theo chủ đề ("CPR — Hỗ trợ hô hấp")
+        />
+        <Stack.Screen
+          name="HistoryDetail"
+          component={HistoryDetailScreen}
+          options={{ title: 'Chi tiết sự cố' }} // tự set thành "EMG-0031"
+        />
+        <Stack.Screen
+          name="MedicalProfile"
+          component={MedicalProfileScreen}
+          options={{
+            title: 'Hồ sơ y tế khẩn cấp',
             headerStyle: { backgroundColor: colors.surface },
             headerTintColor: colors.text,
           }}
