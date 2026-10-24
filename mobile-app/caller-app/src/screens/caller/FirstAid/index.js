@@ -1,74 +1,146 @@
 /**
- * Màn Sơ cấp cứu: hiển thị nội dung hướng dẫn offline (bundle sẵn trong app).
- * Dữ liệu nguồn: src/assets/firstaid/cpr.json - xem được không cần mạng.
+ * C-06 · Thư viện sơ cứu (8 chủ đề, offline):
+ * - Search "Tìm hướng dẫn..." (không phân biệt dấu tiếng Việt)
+ * - Badge xanh "Offline sẵn"
+ * - Grid 2 cột: emoji + tên chủ đề + số bước, bấm vào -> C-07 chi tiết.
+ * Nội dung bundle sẵn trong app (src/data/firstAid.js) - không cần mạng.
  */
-import React from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
-import cprData from '../../../assets/firstaid/cpr.json';
+import { FIRST_AID_TOPICS, searchTopics } from '../../../data/firstAid';
 import { colors, fontSize, fontWeight, radius, spacing } from '../../../theme';
 
-export default function FirstAidScreen() {
+export default function FirstAidScreen({ navigation }) {
+  const [query, setQuery] = useState('');
+  const topics = useMemo(() => searchTopics(query), [query]);
+
+  const openTopic = (topic) => navigation.navigate('FirstAidDetail', { topicId: topic.id });
+
+  const renderTopic = ({ item }) => (
+    <Pressable
+      style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+      onPress={() => openTopic(item)}
+      accessibilityLabel={`Hướng dẫn ${item.title}`}
+    >
+      <View style={styles.emojiBox}>
+        <Text style={styles.emoji}>{item.emoji}</Text>
+      </View>
+      <Text style={styles.cardTitle}>{item.title}</Text>
+      <Text style={styles.cardSub}>{item.steps.length} bước</Text>
+    </Pressable>
+  );
+
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.container}>
-      <View style={styles.disclaimer}>
-        <Text style={styles.disclaimerText}>
-          Lưu ý quan trọng: đây chỉ là hướng dẫn chung, không thay thế chỉ định y khoa.
-          Trong trường hợp nghiêm trọng, hãy gọi SOS hoặc 115 ngay.
-        </Text>
+    <View style={styles.screen}>
+      {/* Search + badge offline */}
+      <View style={styles.toolRow}>
+        <View style={styles.searchBox}>
+          <Ionicons name="search" size={18} color={colors.textMuted} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Tìm hướng dẫn..."
+            placeholderTextColor={colors.textMuted}
+            value={query}
+            onChangeText={setQuery}
+            returnKeyType="search"
+            autoCorrect={false}
+          />
+          {query.length > 0 && (
+            <Pressable hitSlop={8} onPress={() => setQuery('')} accessibilityLabel="Xóa tìm kiếm">
+              <Ionicons name="close-circle" size={18} color={colors.textMuted} />
+            </Pressable>
+          )}
+        </View>
+        <View style={styles.offlineBadge}>
+          <Ionicons name="cloud-offline-outline" size={12} color={colors.successStrong} />
+          <Text style={styles.offlineText}>Offline sẵn</Text>
+        </View>
       </View>
 
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>{cprData.title}</Text>
-        {cprData.steps.map((step, index) => (
-          <View key={String(index)} style={styles.stepRow}>
-            <View style={styles.stepNo}>
-              <Text style={styles.stepNoText}>{index + 1}</Text>
-            </View>
-            <Text style={styles.stepText}>{step}</Text>
+      <FlatList
+        data={topics}
+        keyExtractor={(t) => t.id}
+        renderItem={renderTopic}
+        numColumns={2}
+        columnWrapperStyle={styles.columnWrapper}
+        contentContainerStyle={styles.listContent}
+        keyboardShouldPersistTaps="handled"
+        ListEmptyComponent={
+          <View style={styles.emptyBox}>
+            <Ionicons name="search-outline" size={40} color={colors.textMuted} />
+            <Text style={styles.emptyTitle}>Không tìm thấy hướng dẫn</Text>
+            <Text style={styles.emptySub}>Thử từ khóa khác: "cầm máu", "bỏng", "co giật"...</Text>
           </View>
-        ))}
-      </View>
-
-      <Text style={styles.todoNote}>
-        (Nội dung chi tiết đang được biên tập - cập nhật trong assets/firstaid/cpr.json)
-      </Text>
-    </ScrollView>
+        }
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
-  container: { padding: spacing.xl, paddingBottom: spacing.xxl },
-  disclaimer: {
-    backgroundColor: colors.warningBg,
-    borderWidth: 1,
-    borderColor: '#FDE4C7',
-    borderRadius: radius.m,
-    padding: spacing.l,
-    marginBottom: spacing.l,
+
+  toolRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.s,
+    paddingHorizontal: spacing.l,
+    paddingTop: spacing.s,
+    paddingBottom: spacing.m,
+    backgroundColor: colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
-  disclaimerText: { color: colors.warning, fontSize: fontSize.s, lineHeight: 20, fontWeight: fontWeight.medium },
+  searchBox: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.s,
+    backgroundColor: colors.bgSubtle,
+    borderRadius: radius.m,
+    paddingHorizontal: spacing.m,
+    height: 42,
+  },
+  searchInput: { flex: 1, fontSize: fontSize.s, color: colors.text, paddingVertical: 0 },
+  offlineBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: colors.successBg,
+    borderRadius: radius.full,
+    paddingHorizontal: spacing.s + 2,
+    paddingVertical: 5,
+  },
+  offlineText: { color: colors.successStrong, fontSize: fontSize.xs - 1, fontWeight: fontWeight.semibold },
+
+  listContent: { padding: spacing.l, paddingBottom: spacing.xxl },
+  columnWrapper: { gap: spacing.m, marginBottom: spacing.m },
   card: {
+    flex: 1,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: radius.l,
-    padding: spacing.xl,
+    padding: spacing.l,
+    alignItems: 'flex-start',
   },
-  cardTitle: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.text, marginBottom: spacing.l },
-  stepRow: { flexDirection: 'row', marginBottom: spacing.m },
-  stepNo: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
+  cardPressed: { opacity: 0.85, transform: [{ scale: 0.985 }] },
+  emojiBox: {
+    width: 52,
+    height: 52,
+    borderRadius: radius.m,
     backgroundColor: colors.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: spacing.m,
-    marginTop: 2,
+    marginBottom: spacing.m,
   },
-  stepNoText: { color: colors.primary, fontWeight: fontWeight.bold, fontSize: fontSize.xs },
-  stepText: { flex: 1, fontSize: fontSize.m, color: colors.text, lineHeight: 22 },
-  todoNote: { color: colors.textDisabled, fontSize: fontSize.xs, textAlign: 'center', marginTop: spacing.l },
+  emoji: { fontSize: 28 },
+  cardTitle: { fontSize: fontSize.s + 1, fontWeight: fontWeight.semibold, color: colors.text },
+  cardSub: { fontSize: fontSize.xs, color: colors.textSecondary, marginTop: 2 },
+
+  emptyBox: { alignItems: 'center', padding: spacing.xxl, gap: spacing.s },
+  emptyTitle: { fontSize: fontSize.m, fontWeight: fontWeight.semibold, color: colors.text },
+  emptySub: { fontSize: fontSize.s, color: colors.textSecondary, textAlign: 'center' },
 });
