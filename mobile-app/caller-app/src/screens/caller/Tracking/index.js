@@ -4,9 +4,9 @@
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { useEmergencyStore } from '../../store/emergency';
-import { isFinalStatus, statusLabel } from '../../constants/trip';
-import { colors, fontSize, fontWeight, radius, spacing } from '../../theme';
+import { useEmergencyStore } from '../../../store/emergency';
+import { isFinalStatus, statusLabel } from '../../../constants/trip';
+import { colors, fontSize, fontWeight, radius, spacing } from '../../../theme';
 
 const WS_BADGE = {
   connected: { text: 'Realtime: đã kết nối', color: colors.success, bg: colors.successBg },

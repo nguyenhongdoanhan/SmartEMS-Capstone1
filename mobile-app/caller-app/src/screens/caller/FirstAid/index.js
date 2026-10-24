@@ -5,8 +5,8 @@
 import React from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import cprData from '../../assets/firstaid/cpr.json';
-import { colors, fontSize, fontWeight, radius, spacing } from '../../theme';
+import cprData from '../../../assets/firstaid/cpr.json';
+import { colors, fontSize, fontWeight, radius, spacing } from '../../../theme';
 
 export default function FirstAidScreen() {
   return (

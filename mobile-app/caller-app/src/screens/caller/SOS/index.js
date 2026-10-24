@@ -13,10 +13,10 @@ import {
   View,
 } from 'react-native';
 
-import { getCurrentLocation, formatCoords } from '../../services/location';
-import { useEmergencyStore } from '../../store/emergency';
-import { isFinalStatus, statusLabel } from '../../constants/trip';
-import { colors, fontSize, fontWeight, radius, spacing } from '../../theme';
+import { getCurrentLocation, formatCoords } from '../../../services/location';
+import { useEmergencyStore } from '../../../store/emergency';
+import { isFinalStatus, statusLabel } from '../../../constants/trip';
+import { colors, fontSize, fontWeight, radius, spacing } from '../../../theme';
 
 export default function SOSScreen({ navigation }) {
   const { emergency, createSOS } = useEmergencyStore();

@@ -4,11 +4,11 @@
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { useAuthStore } from '../../store/auth';
-import { useEmergencyStore } from '../../store/emergency';
-import { isFinalStatus, statusLabel } from '../../constants/trip';
-import { ENV } from '../../config/env';
-import { colors, fontSize, fontWeight, radius, spacing } from '../../theme';
+import { useAuthStore } from '../../../store/auth';
+import { useEmergencyStore } from '../../../store/emergency';
+import { isFinalStatus, statusLabel } from '../../../constants/trip';
+import { ENV } from '../../../config/env';
+import { colors, fontSize, fontWeight, radius, spacing } from '../../../theme';
 
 export default function HomeScreen({ navigation }) {
   const { user, logout } = useAuthStore();

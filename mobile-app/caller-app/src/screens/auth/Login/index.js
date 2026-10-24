@@ -16,9 +16,9 @@ import {
   View,
 } from 'react-native';
 
-import { ENV } from '../../config/env';
-import { useAuthStore } from '../../store/auth';
-import { colors, fontSize, fontWeight, radius, spacing } from '../../theme';
+import { ENV } from '../../../config/env';
+import { useAuthStore } from '../../../store/auth';
+import { colors, fontSize, fontWeight, radius, spacing } from '../../../theme';
 
 export default function LoginScreen() {
   const { login, register, loading, error, clearError } = useAuthStore();
