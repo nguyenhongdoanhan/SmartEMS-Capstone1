@@ -5,7 +5,7 @@
  *   - currentRole = 'driver' -> DriverComingSoon (Giai đoạn 2+ thay bằng DriverStack)
  * SOS / Tracking / Settings push ở mức ROOT để che bottom tab (C-04 là map full màn).
  */
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
@@ -51,12 +51,18 @@ function Splash() {
   );
 }
 
+/** Thời gian splash hiển thị tối thiểu (ms) - đảm bảo user thấy M-01 thay vì nháy mắt qua. */
+const SPLASH_MIN_MS = 1600;
+
 export default function AppNavigator() {
   const { token, ready, currentRole, init } = useAuthStore();
   const connectRealtime = useEmergencyStore((s) => s.connectRealtime);
+  const [splashMinDone, setSplashMinDone] = useState(false);
 
   useEffect(() => {
     init();
+    const timer = setTimeout(() => setSplashMinDone(true), SPLASH_MIN_MS);
+    return () => clearTimeout(timer);
   }, []);
 
   // Đăng nhập thành công -> mở kết nối realtime duy nhất cho cả phiên
@@ -64,7 +70,8 @@ export default function AppNavigator() {
     if (token) connectRealtime(token);
   }, [token]);
 
-  if (!ready) return <Splash />;
+  // Splash hiện tối thiểu SPLASH_MIN_MS và cho tới khi khôi phục phiên xong
+  if (!ready || !splashMinDone) return <Splash />;
 
   return (
     <NavigationContainer>
