@@ -1,7 +1,13 @@
 /**
  * Ô nhập mã OTP 6 chữ số - dùng cho màn Đăng ký bước 2 (RegisterOtp).
- * Mỗi ô 1 ký tự, focus tự chuyển: gõ xong ô i -> sang ô i+1; backspace ở ô trống
- * cuối -> xóa ký tự trước đó và lùi focus. Parent giữ state `value` (chuỗi số).
+ * Focus tự chuyển: gõ xong ô i -> sang ô i+1; backspace ô trống cuối ->
+ * xóa ký tự trước đó + lùi focus; bấm vào ô trống xa hơn ô chờ nhập ->
+ * nhảy focus về ô chờ nhập. Parent giữ state `value` (chuỗi số).
+ *
+ * LƯU Ý: KHÔNG khoá ô chưa tới lượt bằng `editable` — trên Android
+ * focus() vào TextInput đang editable=false là no-op, mà focus() lại được
+ * gọi trước khi React re-render mở khoá ô kế tiếp -> không tự nhảy ô.
+ * Mọi ô luôn editable, thứ tự nhập do focus-snap đảm bảo.
  */
 import React, { useRef } from 'react';
 import { StyleSheet, TextInput, View } from 'react-native';
@@ -53,15 +59,18 @@ export default function OtpInput({ length = 6, value = '', onChange, autoFocus =
               refs[i] = r;
             }}
             value={char}
-            editable={i <= value.length}
             autoFocus={autoFocus && i === 0}
             keyboardType="number-pad"
             maxLength={1}
             selectTextOnFocus
             onChangeText={(t) => handleChange(t, i)}
             onKeyPress={(e) => handleKey(e, i)}
+            onFocus={() => {
+              // Bấm vào ô trống xa hơn ô chờ nhập -> nhảy về ô chờ nhập
+              if (i > value.length) focusAt(value.length);
+            }}
             accessibilityLabel={`Ô mã thứ ${i + 1}`}
-            style={[styles.box, !!char && styles.boxFilled, !char && isNext && styles.boxNext, style]}
+            style={[styles.box, !!char && styles.boxFilled, !char && isNext && styles.boxNext]}
           />
         );
       })}
