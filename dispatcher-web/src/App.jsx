@@ -10,7 +10,7 @@ import Login from "./pages/Login";
 export default function App() {
   return (
     <div>
-      <nav style={{ display: "flex", gap: 12, padding: 12 }}>
+     <nav style={{ display: "flex", gap: 12, padding: 12 }}>
         <Link to="/">Dashboard</Link>
         <Link to="/emergencies">Emergencies</Link>
         <Link to="/ambulances">Ambulances</Link>
