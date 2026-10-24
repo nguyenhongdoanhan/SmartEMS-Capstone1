@@ -47,6 +47,9 @@ export const colors = {
   error: '#DC2626',
   errorBg: '#FFEBEE', // badge KHẨN CẤP
 
+  star: '#FBBF24', // vàng 5 sao đánh giá (C-05, C-09)
+  mapRoute: 'rgba(37, 99, 235, 0.9)', // màu polyline tuyến xe (C-04)
+
   // ===== Badge pastel (C-08 lịch sử, C-09 event log, C-07) =====
   badge: {
     success: { bg: '#DCFCE7', text: '#166534' }, // HOÀN TẤT
