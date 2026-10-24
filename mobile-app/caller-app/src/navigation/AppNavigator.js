@@ -9,11 +9,12 @@ import React, { useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { useAuthStore } from '../store/auth';
 import { useEmergencyStore } from '../store/emergency';
 import { colors, fontSize, fontWeight, radius, spacing } from '../theme';
+import DotsLoader from '../components/DotsLoader';
 
 import LoginScreen from '../screens/auth/Login';
 import CallerTabs from './CallerTabs';
@@ -45,7 +46,8 @@ function Splash() {
         <Text style={styles.wordEms}>EMS</Text>
       </View>
       <Text style={styles.slogan}>Điều phối cứu thương thời gian thực</Text>
-      <ActivityIndicator size="large" color={colors.textOnPrimary} style={styles.spinner} />
+      <Text style={styles.slogan2}>Phản hồi trong «giờ vàng»</Text>
+      <DotsLoader style={styles.loader} />
       <Text style={styles.footer}>Nguồn mẫu học thuật · Không thay thế dịch vụ 115</Text>
     </View>
   );
@@ -128,7 +130,8 @@ const styles = StyleSheet.create({
   wordSmart: { color: colors.textOnPrimary, fontSize: fontSize.xxl, fontWeight: fontWeight.bold },
   wordEms: { color: colors.primary, fontSize: fontSize.xxl, fontWeight: fontWeight.bold },
   slogan: { color: 'rgba(255,255,255,0.7)', fontSize: fontSize.s, marginTop: spacing.s },
-  spinner: { marginTop: spacing.xxl },
+  slogan2: { color: 'rgba(255,255,255,0.7)', fontSize: fontSize.s, marginTop: 2 },
+  loader: { marginTop: spacing.xxl },
   footer: {
     color: 'rgba(255,255,255,0.45)',
     fontSize: fontSize.xs,
