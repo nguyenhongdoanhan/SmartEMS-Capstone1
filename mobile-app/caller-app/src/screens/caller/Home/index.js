@@ -1,70 +1,138 @@
 /**
- * Màn chính: trạng thái chuyến cấp cứu đang hoạt động + lối vào SOS / Sơ cấp cứu.
+ * C-01 Home / Nút SOS - đúng mockup tài liệu thiết kế:
+ * - Card user: avatar chữ nền hồng + "Xin chào, {tên}" + địa chỉ hiện tại + icon chuông
+ * - Nút SOS tròn đỏ GIỮ 2 GIÂY (progress ring) -> sang C-02 xác nhận
+ * - 2 quick card: Sơ cứu khẩn cấp (offline) / Bệnh viện gần nhất
+ * - Có chuyến đang chạy -> card trạng thái nhảy thẳng C-03/C-04
+ * Bottom nav 4 tab nằm ở CallerTabs (không đụng ở đây).
  */
-import React from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import * as Location from 'expo-location';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { SosHoldButton } from '../../../components';
+import { hospitalsApi } from '../../../services';
+import { formatCoords, reverseGeocodeAddress } from '../../../services/location';
 import { useAuthStore } from '../../../store/auth';
 import { useEmergencyStore } from '../../../store/emergency';
-import { isFinalStatus, statusLabel } from '../../../constants/trip';
-import { ENV } from '../../../config/env';
+import { isFinalStatus, isMatchingStatus, statusLabel } from '../../../constants/trip';
 import { colors, fontSize, fontWeight, radius, spacing } from '../../../theme';
+import { ENV } from '../../../config/env';
+
+const firstName = (fullName) => (fullName || 'bạn').trim().split(/\s+/).pop();
 
 export default function HomeScreen({ navigation }) {
-  const { user, logout } = useAuthStore();
-  const { emergency, disconnectRealtime, clear } = useEmergencyStore();
-  const active = emergency && !isFinalStatus(emergency.status);
+  const { user } = useAuthStore();
+  const { emergency } = useEmergencyStore();
+  const [address, setAddress] = useState(null); // null = đang xác định
 
-  const handleLogout = async () => {
-    disconnectRealtime();
-    clear();
-    await logout();
+  const active = emergency && !isFinalStatus(emergency.status);
+  const matching = active && isMatchingStatus(emergency.status);
+
+  // Địa chỉ cho card chào: chỉ đọc khi ĐÃ cấp quyền (không hỏi popup ngay trên Home),
+  // vì màn C-02 mới thật sự cần GPS và sẽ hỏi quyền ở đó.
+  useEffect(() => {
+    let dead = false;
+    (async () => {
+      try {
+        const { status } = await Location.getForegroundPermissionsAsync();
+        if (status !== 'granted') {
+          if (!dead) setAddress('Cấp quyền vị trí để hiện địa chỉ');
+          return;
+        }
+        const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+        const text = (await reverseGeocodeAddress(pos.coords)) || formatCoords(pos.coords);
+        if (!dead) setAddress(text);
+      } catch (err) {
+        if (!dead) setAddress('Không xác định được vị trí');
+      }
+    })();
+    return () => {
+      dead = true;
+    };
+  }, []);
+
+  const openSos = () => navigation.navigate('SOS');
+
+  const openActive = () => navigation.navigate(matching ? 'Matching' : 'Tracking');
+
+  const openHospitals = async () => {
+    try {
+      const list = await hospitalsApi.nearby();
+      Alert.alert(
+        'Bệnh viện gần nhất',
+        list.map((h, i) => `${i + 1}. ${h.name}\n    ${h.address} · ${h.distance_km} km · ${h.phone}`).join('\n\n'),
+        [{ text: 'Đóng', style: 'cancel' }],
+      );
+    } catch (err) {
+      Alert.alert('Bệnh viện gần nhất', 'Chưa tải được danh sách bệnh viện (backend /hospitals còn stub).');
+    }
   };
 
+  const openBell = () => {
+    Alert.alert('Thông báo', 'Bạn chưa có thông báo mới.\nCảnh báo xe đến gần sẽ hiện ở đây (bản kế tiếp).');
+  };
+
+  const initials = (user?.full_name || 'S').trim().charAt(0).toUpperCase();
+
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.container}>
-      <Text style={styles.greeting}>Xin chào, {user?.full_name || 'bạn'}</Text>
-      <Text style={styles.greetingSub}>Bạn cần hỗ trợ y tế khẩn cấp?</Text>
-
-      {active ? (
-        <View style={styles.activeCard}>
-          <View style={styles.activeDot} />
-          <View style={styles.activeInfo}>
-            <Text style={styles.activeTitle}>Đang có yêu cầu cấp cứu</Text>
-            <Text style={styles.activeStatus}>{statusLabel(emergency.status)}</Text>
+    <ScrollView style={styles.screen} contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+      {/* Card user - mockup C-01 */}
+      <View style={styles.userCard}>
+        <View style={styles.avatar}>
+          <Text style={styles.avatarText}>{initials}</Text>
+        </View>
+        <View style={styles.userInfo}>
+          <Text style={styles.greeting}>Xin chào, {firstName(user?.full_name)}</Text>
+          <Text style={styles.address} numberOfLines={2}>
+            📍 {address || 'Đang xác định vị trí...'}
+          </Text>
+        </View>
+        <Pressable onPress={openBell} hitSlop={8} accessibilityLabel="Thông báo">
+          <View style={styles.bell}>
+            <Ionicons name="notifications-outline" size={20} color={colors.textSecondary} />
           </View>
-          <Pressable style={styles.trackBtn} onPress={() => navigation.navigate('Tracking')}>
-            <Text style={styles.trackBtnText}>Theo dõi</Text>
-          </Pressable>
-        </View>
-      ) : (
-        <View style={styles.idleCard}>
-          <Text style={styles.idleText}>Không có yêu cầu nào đang hoạt động</Text>
-        </View>
-      )}
-
-      <Pressable
-        style={({ pressed }) => [styles.sosBtn, pressed && styles.sosBtnPressed]}
-        onPress={() => navigation.navigate('SOS')}
-      >
-        <Text style={styles.sosText}>GỬI CỨU THƯƠNG</Text>
-        <Text style={styles.sosSub}>Cấp cứu ngay tại vị trí của bạn</Text>
-      </Pressable>
-
-      <View style={styles.rowBtns}>
-        <Pressable style={styles.subBtn} onPress={() => navigation.navigate('FirstAid')}>
-          <Text style={styles.subBtnText}>Hướng dẫn sơ cứu</Text>
         </Pressable>
-        {!active && emergency && (
-          <Pressable style={styles.subBtn} onPress={() => navigation.navigate('Tracking')}>
-            <Text style={styles.subBtnText}>Xem chuyến cũ</Text>
-          </Pressable>
-        )}
       </View>
 
-      <Pressable onPress={handleLogout} hitSlop={8}>
-        <Text style={styles.logout}>Đăng xuất</Text>
-      </Pressable>
+      {/* Có chuyến đang chạy -> thẻ trạng thái nhảy vào C-03/C-04 */}
+      {active && (
+        <Pressable style={({ pressed }) => [styles.activeCard, pressed && { opacity: 0.9 }]} onPress={openActive}>
+          <View style={styles.activeDot} />
+          <View style={styles.activeInfo}>
+            <Text style={styles.activeTitle}>
+              {matching ? 'Đang tìm xe phù hợp...' : statusLabel(emergency.status)}
+            </Text>
+            <Text style={styles.activeSub}>Chạm để theo dõi chuyến cấp cứu</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+        </Pressable>
+      )}
+
+      {/* Nút SOS giữ 2 giây - trung tâm màn hình */}
+      <View style={styles.sosWrap}>
+        <SosHoldButton onComplete={openSos} />
+        <Text style={styles.sosNote}>Vị trí GPS sẽ được gửi tự động</Text>
+      </View>
+
+      {/* 2 quick card - mockup C-01 */}
+      <View style={styles.quickRow}>
+        <Pressable style={({ pressed }) => [styles.quickCard, pressed && { opacity: 0.85 }]} onPress={() => navigation.navigate('FirstAid')}>
+          <View style={[styles.quickIcon, styles.quickIconRed]}>
+            <Ionicons name="medkit-outline" size={22} color={colors.primary} />
+          </View>
+          <Text style={styles.quickTitle}>Sơ cứu khẩn cấp</Text>
+          <Text style={styles.quickSub}>Offline sẵn</Text>
+        </Pressable>
+        <Pressable style={({ pressed }) => [styles.quickCard, pressed && { opacity: 0.85 }]} onPress={openHospitals}>
+          <View style={[styles.quickIcon, styles.quickIconBlue]}>
+            <Ionicons name="business-outline" size={22} color={colors.blue} />
+          </View>
+          <Text style={styles.quickTitle}>Bệnh viện gần nhất</Text>
+          <Text style={styles.quickSub}>3 cơ sở · 2 km</Text>
+        </Pressable>
+      </View>
 
       {ENV.MOCK_MODE && <Text style={styles.mockBadge}>Chế độ demo (mock data)</Text>}
     </ScrollView>
@@ -74,8 +142,38 @@ export default function HomeScreen({ navigation }) {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   container: { padding: spacing.xl, paddingBottom: spacing.xxl },
-  greeting: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.text },
-  greetingSub: { fontSize: fontSize.s, color: colors.textSecondary, marginTop: spacing.xs, marginBottom: spacing.xl },
+
+  userCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: radius.l,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.l,
+  },
+  avatar: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.full,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.m,
+  },
+  avatarText: { color: colors.primary, fontSize: fontSize.l, fontWeight: fontWeight.bold },
+  userInfo: { flex: 1, marginRight: spacing.s },
+  greeting: { fontSize: fontSize.m, fontWeight: fontWeight.bold, color: colors.text },
+  address: { fontSize: fontSize.xs, color: colors.textSecondary, marginTop: 2 },
+  bell: {
+    width: 38,
+    height: 38,
+    borderRadius: radius.full,
+    backgroundColor: colors.bgSubtle,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
   activeCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -84,58 +182,43 @@ const styles = StyleSheet.create({
     borderColor: '#FDE4C7',
     borderRadius: radius.m,
     padding: spacing.l,
-    marginBottom: spacing.l,
+    marginTop: spacing.l,
   },
-  activeDot: { width: 12, height: 12, borderRadius: 6, backgroundColor: colors.warning, marginRight: spacing.m },
+  activeDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.warning, marginRight: spacing.m },
   activeInfo: { flex: 1 },
   activeTitle: { fontSize: fontSize.m, fontWeight: fontWeight.semibold, color: colors.text },
-  activeStatus: { fontSize: fontSize.xs, color: colors.textSecondary, marginTop: spacing.xs },
-  trackBtn: {
-    backgroundColor: colors.primary,
-    borderRadius: radius.s,
-    paddingHorizontal: spacing.l,
-    paddingVertical: spacing.s + 2,
-  },
-  trackBtnText: { color: colors.textOnPrimary, fontSize: fontSize.s, fontWeight: fontWeight.semibold },
-  idleCard: {
+  activeSub: { fontSize: fontSize.xs, color: colors.textSecondary, marginTop: 2 },
+
+  sosWrap: { alignItems: 'center', marginTop: spacing.xxl },
+  sosNote: { color: colors.textSecondary, fontSize: fontSize.s, marginTop: spacing.l },
+
+  quickRow: { flexDirection: 'row', gap: spacing.m, marginTop: spacing.xxl },
+  quickCard: {
+    flex: 1,
     backgroundColor: colors.surface,
-    borderRadius: radius.m,
+    borderRadius: radius.l,
     borderWidth: 1,
     borderColor: colors.border,
     padding: spacing.l,
-    marginBottom: spacing.l,
+    alignItems: 'flex-start',
   },
-  idleText: { fontSize: fontSize.s, color: colors.textSecondary, textAlign: 'center' },
-  sosBtn: {
-    backgroundColor: colors.primary,
-    borderRadius: radius.xl,
-    paddingVertical: spacing.xl,
-    alignItems: 'center',
-    elevation: 6,
-    shadowColor: colors.primaryDark,
-    shadowOpacity: 0.4,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-  },
-  sosBtnPressed: { backgroundColor: colors.primaryDark },
-  sosText: { color: colors.textOnPrimary, fontSize: fontSize.xxl, fontWeight: fontWeight.bold, letterSpacing: 1 },
-  sosSub: { color: 'rgba(255,255,255,0.85)', fontSize: fontSize.xs, marginTop: spacing.xs },
-  rowBtns: { flexDirection: 'row', gap: spacing.m, marginTop: spacing.l },
-  subBtn: {
-    flex: 1,
-    backgroundColor: colors.surface,
+  quickIcon: {
+    width: 42,
+    height: 42,
     borderRadius: radius.m,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingVertical: spacing.m,
     alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.m,
   },
-  subBtnText: { color: colors.text, fontSize: fontSize.s, fontWeight: fontWeight.medium },
-  logout: { color: colors.textSecondary, fontSize: fontSize.s, textAlign: 'center', marginTop: spacing.xl },
+  quickIconRed: { backgroundColor: colors.primaryLight },
+  quickIconBlue: { backgroundColor: colors.blueBg },
+  quickTitle: { fontSize: fontSize.s, fontWeight: fontWeight.semibold, color: colors.text },
+  quickSub: { fontSize: fontSize.xs, color: colors.textSecondary, marginTop: 2 },
+
   mockBadge: {
     color: colors.textDisabled,
     fontSize: fontSize.xs,
     textAlign: 'center',
-    marginTop: spacing.m,
+    marginTop: spacing.xl,
   },
 });
