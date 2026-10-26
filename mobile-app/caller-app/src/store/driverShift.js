@@ -1,16 +1,18 @@
 /**
- * Store ca trực tài xế (driver) - D-01 + luồng nhận ca GĐ2 (D-02/D-03).
+ * Store ca trực tài xế (driver) - D-01 + toàn bộ vòng đời ca GĐ2/GĐ3 (D-02 -> D-07).
  * - Công tắc "TRẠNG THÁI TRỰC" là gate của GPS stream THẬT (expo-location
  *   watchPositionAsync 3 giây/lần - đúng mockup "GPS cập nhật 3 giây/lần").
  *   Bật trực = mở stream, tắt trực = đóng stream ngay.
  * - Mỗi vị trí mới cập nhật lastPosition + packets (đếm bản tin "đã gửi").
- *   MOCK_MODE chỉ đếm trong store; khi backend dispatch xong, GĐ3 sẽ nối
+ *   MOCK_MODE chỉ đếm trong store; khi backend dispatch xong, sẽ nối
  *   POST /ambulances/{id}/location tại điểm đánh dấu (gap D4/D5 trong
  *   design/driver-design-analysis.md).
- * - GĐ2: quản lý CA HIỆN TẠI (caseData + caseStatus theo FSM driverTrip).
- *   Khi MOCK_MODE, scheduler tự sinh ca điều động gần GPS thật sau khi bật
- *   trực (gap D1 - dispatch.py backend còn stub). Khi có dispatch thật: WS
- *   kênh user:{id} gọi receiveDispatch(case) - giữ nguyên phần còn lại.
+ * - FSM ca: DISPATCH_PENDING -> DRIVER_ACCEPTED -> DRIVER_EN_ROUTE ->
+ *   ARRIVED_ON_SCENE (D-04 triage) -> TRANSPORTING (D-05) -> AT_HOSPITAL
+ *   (D-06 bàn giao) -> RETURNING (D-07 về trạm, có thể bị tái điều động).
+ * - MOCK_MODE scheduler: sinh ca sau khi bật trực (gap D1) + đề xuất tái
+ *   điều động 6-10s sau khi vào RETURNING (gap D1 - event thật là WS
+ *   RETURNING_TRIP_REASSIGNED).
  * - KHÔNG persist onDuty/case: subscription GPS sống trong phiên app. Mở lại
  *   app luôn OFF cho an toàn - tránh stream ngầm chạy mà tài xế không biết.
  * - Xe / trạm / thống kê 3 ô là mock (backend chưa có bảng assignment và
@@ -21,7 +23,7 @@ import * as Location from 'expo-location';
 
 import { ENV } from '../config/env';
 import { DRIVER_CASE_STATUS } from '../constants/driverTrip';
-import { generateDispatch } from '../services/mock/mockDriverApi';
+import { generateDispatch, generateReassignment } from '../services/mock/mockDriverApi';
 
 /** Xe của tài xế trong phiên demo (mock - gap D6: backend chưa có gán xe). */
 export const DRIVER_VEHICLE = {
@@ -30,10 +32,11 @@ export const DRIVER_VEHICLE = {
   type: 'Xe cấp cứu Loại A',
 };
 
-/** Trạm trực (mock). */
+/** Trạm trực (mock) - coords trùng FALLBACK_ANCHOR của mockDriverApi (Sơn Trà). */
 export const DRIVER_STATION = {
   id: 'S1',
   name: 'Trạm S1 Sơn Trà',
+  coords: { latitude: 16.0785, longitude: 108.2467 },
 };
 
 /** Thống kê 3 ô của D-01 (mock - GĐ4 nối shift data thật, gap D7). */
@@ -50,18 +53,27 @@ export const GPS_INTERVAL_MS = 3000;
 const FIRST_DISPATCH_MS = [8000, 15000]; // sau khi bật trực: 8-15s
 const NEXT_AFTER_DECLINE_MS = 20000; // từ chối xong, chờ hơi lâu cho tài xế kịp đọc D-01
 const NEXT_AFTER_CASE_MS = 12000; // kết thúc 1 chuyến -> ca kế tiếp
+const REASSIGN_AFTER_RETURNING_MS = [6000, 10000]; // vào RETURNING -> đề xuất tái điều động
+const REASSIGN_AFTER_DECLINE_MS = 20000; // từ chối tái điều động -> hẹn lại (demo)
 
 // Subscription watchPositionAsync sống ngoài state (object EventSubscription,
 // không cần render lại khi đổi).
 let watchSub = null;
 // Timer sinh ca mock tiếp theo (module-level như watchSub).
 let dispatchTimer = null;
+// Timer đề xuất tái điều động trên tuyến RETURNING (D-07).
+let reassignTimer = null;
 
 function teardownWatch() {
   if (watchSub) {
     watchSub.remove();
     watchSub = null;
   }
+}
+
+function teardownTimers() {
+  clearTimeout(dispatchTimer);
+  clearTimeout(reassignTimer);
 }
 
 export const useDriverShiftStore = create((set, get) => ({
@@ -75,6 +87,14 @@ export const useDriverShiftStore = create((set, get) => ({
   caseData: null,
   /** Vị trí trong FSM - xem constants/driverTrip.js (bắt đầu bằng DISPATCH_PENDING). */
   caseStatus: null,
+  /** Phiếu triage D-04 (gửi kèm khi bắt đầu vận chuyển): level + vitals + AVPU + note. */
+  triage: null,
+  /** Giờ tới hiện trường (D-04 chạy đồng hồ "tại hiện trường"). */
+  onSceneAt: null,
+  /** Giờ tới bệnh viện (D-06 hiển thị "khoa cấp cứu tiếp nhận HH:MM"). */
+  hospitalArrivedAt: null,
+  /** Ca đề xuất TÁI ĐIỀU ĐỘNG khi đang RETURNING (D-07 popup) - không đè caseData. */
+  reassignmentCase: null,
 
   /**
    * Bật ca trực: xin quyền vị trí rồi mở GPS stream 3s/lần.
@@ -120,14 +140,21 @@ export const useDriverShiftStore = create((set, get) => ({
    *  và hủy luôn ca đang chạy/kế hoạch sinh ca - kết thúc phiên làm việc. */
   stopDuty: () => {
     teardownWatch();
-    clearTimeout(dispatchTimer);
-    set({ onDuty: false, caseData: null, caseStatus: null });
+    teardownTimers();
+    set({
+      onDuty: false,
+      caseData: null,
+      caseStatus: null,
+      triage: null,
+      reassignmentCase: null,
+    });
   },
 
   // ===== Ca hiện tại (FSM driverTrip) =====
 
   /** Nhận đề xuất điều động (từ mock scheduler, sau này là WS backend). */
-  receiveDispatch: (caseData) => set({ caseData, caseStatus: DRIVER_CASE_STATUS.DISPATCH_PENDING }),
+  receiveDispatch: (caseData) =>
+    set({ caseData, caseStatus: DRIVER_CASE_STATUS.DISPATCH_PENDING, triage: null }),
 
   /** D-02 bấm CHẤP NHẬN (hoặc hết 12s xem như từ chối - FE tự chốt). */
   acceptDispatch: () => {
@@ -141,11 +168,65 @@ export const useDriverShiftStore = create((set, get) => ({
     set({ caseStatus: DRIVER_CASE_STATUS.DRIVER_EN_ROUTE });
   },
 
-  /** D-03 bấm ĐÃ ĐẾN HIỆN TRƯỜNG -> sang D-04 (GĐ3 làm tiếp triage). */
+  /** D-03 bấm ĐÃ ĐẾN HIỆN TRƯỜNG -> D-04 (ghi giờ đến để chạy đồng hồ tại hiện trường). */
   arrivedOnScene: () => {
     const s = get().caseStatus;
     if (s !== DRIVER_CASE_STATUS.DRIVER_EN_ROUTE && s !== DRIVER_CASE_STATUS.DRIVER_ACCEPTED) return;
-    set({ caseStatus: DRIVER_CASE_STATUS.ARRIVED_ON_SCENE });
+    set({ caseStatus: DRIVER_CASE_STATUS.ARRIVED_ON_SCENE, onSceneAt: Date.now() });
+  },
+
+  /**
+   * D-04 bấm VẬN CHUYỂN BỆNH NHÂN: lưu phiếu triage + chuyển TRANSPORTING.
+   * GĐ3 marker (gap D3): !MOCK_MODE -> POST phiếu triage trước cho BV đích
+   * (caseData.hospital) để khoa cấp cứu chuẩn bị tiếp nhận.
+   */
+  startTransport: (triage) => {
+    if (get().caseStatus !== DRIVER_CASE_STATUS.ARRIVED_ON_SCENE) return;
+    set({ caseStatus: DRIVER_CASE_STATUS.TRANSPORTING, triage: { ...triage, sentAt: Date.now() } });
+  },
+
+  /** D-05 bấm ĐÃ ĐẾN BỆNH VIỆN (ghi giờ đến cho D-06 hiển thị giờ tiếp nhận). */
+  arriveAtHospital: () => {
+    if (get().caseStatus !== DRIVER_CASE_STATUS.TRANSPORTING) return;
+    set({ caseStatus: DRIVER_CASE_STATUS.AT_HOSPITAL, hospitalArrivedAt: Date.now() });
+  },
+
+  /**
+   * D-06 bấm HOÀN TẤT BÀN GIAO: chuyến đi khép (backend phát TRIP_COMPLETED
+   * cho emergency + RETURNING cho ambulance) -> xe rỗng về trạm, D-07 lo nốt.
+   * MOCK_MODE: hẹn đề xuất tái điều động 6-10s sau (gap D1).
+   */
+  completeHandover: () => {
+    if (get().caseStatus !== DRIVER_CASE_STATUS.AT_HOSPITAL) return;
+    set({ caseStatus: DRIVER_CASE_STATUS.RETURNING });
+    get().scheduleReassignment(REASSIGN_AFTER_RETURNING_MS);
+  },
+
+  /** D-07 popup bấm CHẤP NHẬN CA MỚI: nhận thẳng ca tái điều động (không đếm
+   *  ngược lại - tài xế đã chủ động xác nhận) -> quay lại D-03 với ca mới. */
+  acceptReassignment: (newCase) => {
+    if (get().caseStatus !== DRIVER_CASE_STATUS.RETURNING) return;
+    set({
+      caseData: newCase,
+      caseStatus: DRIVER_CASE_STATUS.DRIVER_ACCEPTED,
+      triage: null,
+      reassignmentCase: null,
+      onSceneAt: null,
+      hospitalArrivedAt: null,
+    });
+  },
+
+  /** D-07 popup bấm TIẾP TỤC VỀ TRẠM: bỏ qua đề xuất này, mock hẹn lại sau. */
+  declineReassignment: () => {
+    set({ reassignmentCase: null });
+    get().scheduleReassignment([REASSIGN_AFTER_DECLINE_MS, REASSIGN_AFTER_DECLINE_MS]);
+  },
+
+  /** D-07 bấm ĐÃ VỀ TRẠM: kết thúc hẳn ca hiện tại (TRIP_COMPLETED) - GĐ4
+   *  sẽ ghi chuyến vào lịch sử; mock hẹn ca kế tiếp như clearCase. */
+  arriveStation: () => {
+    if (get().caseStatus !== DRIVER_CASE_STATUS.RETURNING) return;
+    get().clearCase();
   },
 
   /** Từ chối ca (nút bấm hoặc hết 12s) - ghi nhận rồi chờ ca khác. */
@@ -154,9 +235,17 @@ export const useDriverShiftStore = create((set, get) => ({
     get().scheduleNextDispatch([NEXT_AFTER_DECLINE_MS, NEXT_AFTER_DECLINE_MS]);
   },
 
-  /** Dọn ca sau khi kết thúc luồng (D-04 placeholder "Về ca trực"; GĐ3 gọi ở TRIP_COMPLETED). */
+  /** Dọn ca sau khi kết thúc luồng - mock hẹn ca kế tiếp. */
   clearCase: () => {
-    set({ caseData: null, caseStatus: null });
+    clearTimeout(reassignTimer);
+    set({
+      caseData: null,
+      caseStatus: null,
+      triage: null,
+      reassignmentCase: null,
+      onSceneAt: null,
+      hospitalArrivedAt: null,
+    });
     get().scheduleNextDispatch([NEXT_AFTER_CASE_MS, NEXT_AFTER_CASE_MS]);
   },
 
@@ -174,6 +263,23 @@ export const useDriverShiftStore = create((set, get) => ({
       if (!onDuty || caseData) return; // điều kiện đã đổi thì bỏ lượt này
       const nextCase = generateDispatch(useDriverShiftStore.getState().lastPosition);
       get().receiveDispatch(nextCase);
+    }, delay);
+  },
+
+  /**
+   * Hẹn đề xuất TÁI ĐIỀU ĐỘNG khi đang RETURNING (D-07 - gap D1: backend thật
+   * đẩy WS RETURNING_TRIP_REASSIGNED). Ca mới sinh GẦN VỊ TRÍ GPS THẬT lúc đó.
+   */
+  scheduleReassignment: (rangeMs) => {
+    clearTimeout(reassignTimer);
+    if (!ENV.MOCK_MODE) return;
+    const [minMs, maxMs] = rangeMs;
+    const delay = minMs + Math.random() * (maxMs - minMs);
+    reassignTimer = setTimeout(() => {
+      const { onDuty, caseStatus, reassignmentCase } = useDriverShiftStore.getState();
+      if (!onDuty || caseStatus !== DRIVER_CASE_STATUS.RETURNING || reassignmentCase) return;
+      const newCase = generateReassignment(useDriverShiftStore.getState().lastPosition);
+      set({ reassignmentCase: newCase });
     }, delay);
   },
 }));
