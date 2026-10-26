@@ -2,7 +2,9 @@
  * D-02 Thông báo điều động (full-screen, KHÔNG tab bar) - đúng mockup:
  * - Khối đỏ 2/3 màn: icon đèn nháy (pulse) + "YÊU CẦU ĐIỀU ĐỘNG MỚI"
  *   + dòng phụ "Tự động hủy sau" + vòng đếm ngược 12s (ring SVG co dần)
- *   với số giây + đơn vị "s" đặt gọn giữa vòng.
+ *   với số giây + đơn vị "s" đặt gọn giữa vòng. Ring là lớp absolute,
+ *   số đếm nằm trong luồng layout (pattern SosHoldButton) để không bị
+ *   Yoga/Fabric đo sai kích thước Svg làm bộ đếm trôi ra ngoài vòng.
  * - Card trắng: badge CRITICAL + mã EMG + địa chỉ + 3 số (khoảng cách · ETA ·
  *   nạn nhân) + hộp vàng ghi chú hiện trường.
  * - 2 nút: "CHẤP NHẬN — BẮT ĐẦU CHUYẾN ĐI" (xanh lá - quy ước nhận ca) /
@@ -102,28 +104,32 @@ export default function DriverDispatchAlertScreen({ navigation }) {
         <Text style={styles.sub}>Tự động hủy sau</Text>
 
         <View style={styles.ringWrap}>
-          <Svg width={RING_SIZE} height={RING_SIZE}>
-            <Circle
-              cx={RING_SIZE / 2}
-              cy={RING_SIZE / 2}
-              r={R}
-              stroke="rgba(255, 255, 255, 0.25)"
-              strokeWidth={STROKE}
-              fill="none"
-            />
-            <AnimatedCircle
-              cx={RING_SIZE / 2}
-              cy={RING_SIZE / 2}
-              r={R}
-              stroke={colors.textOnPrimary}
-              strokeWidth={STROKE}
-              strokeLinecap="round"
-              fill="none"
-              strokeDasharray={`${CIRC} ${CIRC}`}
-              strokeDashoffset={strokeOffset}
-              transform={`rotate(-90 ${RING_SIZE / 2} ${RING_SIZE / 2})`}
-            />
-          </Svg>
+          {/* Ring SVG: lớp absolute như SosHoldButton - không phụ thuộc Yoga đo Svg */}
+          <View style={StyleSheet.absoluteFill} pointerEvents="none">
+            <Svg width={RING_SIZE} height={RING_SIZE}>
+              <Circle
+                cx={RING_SIZE / 2}
+                cy={RING_SIZE / 2}
+                r={R}
+                stroke="rgba(255, 255, 255, 0.25)"
+                strokeWidth={STROKE}
+                fill="none"
+              />
+              <AnimatedCircle
+                cx={RING_SIZE / 2}
+                cy={RING_SIZE / 2}
+                r={R}
+                stroke={colors.textOnPrimary}
+                strokeWidth={STROKE}
+                strokeLinecap="round"
+                fill="none"
+                strokeDasharray={`${CIRC} ${CIRC}`}
+                strokeDashoffset={strokeOffset}
+                transform={`rotate(-90 ${RING_SIZE / 2} ${RING_SIZE / 2})`}
+              />
+            </Svg>
+          </View>
+          {/* Bộ đếm nằm trong luồng layout, wrap căn giữa -> luôn giữa ring */}
           <View style={styles.ringCenter} pointerEvents="none">
             <Text style={styles.countNum}>{remaining}</Text>
             <Text style={styles.countUnit}>s</Text>
@@ -201,14 +207,17 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     textAlign: 'center',
   },
-  ringWrap: { marginTop: spacing.xl, alignItems: 'center', justifyContent: 'center' },
-  sub: { color: 'rgba(255, 255, 255, 0.75)', fontSize: fontSize.s, marginTop: spacing.s },
-  ringCenter: {
-    ...StyleSheet.absoluteFillObject,
-    flexDirection: 'row',
-    alignItems: 'baseline',
+  // Khối ring cố định kích thước -> Yoga đo wrap chuẩn, Svg absolute bên trong
+  // (pattern SosHoldButton: nội dung luôn nằm giữa dù Fabric đo Svg lệch).
+  ringWrap: {
+    width: RING_SIZE,
+    height: RING_SIZE,
+    marginTop: spacing.xl,
+    alignItems: 'center',
     justifyContent: 'center',
   },
+  sub: { color: 'rgba(255, 255, 255, 0.75)', fontSize: fontSize.s, marginTop: spacing.s },
+  ringCenter: { flexDirection: 'row', alignItems: 'baseline' },
   countNum: { color: colors.textOnPrimary, fontSize: 46, fontWeight: fontWeight.bold, lineHeight: 50 },
   countUnit: {
     color: 'rgba(255, 255, 255, 0.85)',
