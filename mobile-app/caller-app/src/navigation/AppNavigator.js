@@ -40,6 +40,9 @@ import MedicalProfileScreen from '../screens/caller/MedicalProfile';
 import DriverDispatchAlertScreen from '../screens/driver/DispatchAlert';
 import DriverNavigationScreen from '../screens/driver/Navigation';
 import DriverOnSceneScreen from '../screens/driver/OnScene';
+import DriverTransportScreen from '../screens/driver/Transport';
+import DriverHandoverScreen from '../screens/driver/Handover';
+import DriverReturningScreen from '../screens/driver/Returning';
 
 const Stack = createNativeStackNavigator();
 
@@ -174,9 +177,10 @@ export default function AppNavigator() {
           }}
         />
 
-        {/* ===== Driver: luồng nhận ca GĐ2 - push root để che tab bar =====
+        {/* ===== Driver: vòng đời ca GĐ2+GĐ3 - push root để che tab bar =====
             D-02 điều động (fade, chặn back trong countdown) -> D-03 dẫn đường
-            -> D-04 tại hiện trường (placeholder GĐ2, triage thật GĐ3). */}
+            -> D-04 triage -> D-05 vận chuyển -> D-06 bàn giao -> D-07 returning
+            (popup tái điều động quay lại D-03 với ca mới). */}
         <Stack.Screen
           name="DispatchAlert"
           component={DriverDispatchAlertScreen}
@@ -188,6 +192,9 @@ export default function AppNavigator() {
         />
         <Stack.Screen name="DriverNavigation" component={DriverNavigationScreen} options={{ headerShown: false }} />
         <Stack.Screen name="OnScene" component={DriverOnSceneScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="DriverTransport" component={DriverTransportScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="DriverHandover" component={DriverHandoverScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="DriverReturning" component={DriverReturningScreen} options={{ headerShown: false }} />
       </Stack.Navigator>
     </NavigationContainer>
   );

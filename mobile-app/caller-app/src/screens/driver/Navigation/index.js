@@ -112,7 +112,7 @@ export default function DriverNavigationScreen({ navigation }) {
 
   const arrive = () => {
     arrivedOnScene(); // DRIVER_EN_ROUTE -> ARRIVED_ON_SCENE
-    navigation.replace('OnScene'); // sang D-04 (placeholder GĐ2, triage thật GĐ3)
+    navigation.replace('OnScene'); // sang D-04 triage (đánh giá nhanh bệnh nhân)
   };
 
   return (
