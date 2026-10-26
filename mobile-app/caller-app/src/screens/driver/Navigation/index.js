@@ -3,8 +3,11 @@
  * - Map: pin đỏ hiện trường + vòng xanh xe cứu thương tại vị trí GPS THẬT
  *   (store driverShift 3s/lần) - camera tự fit cả 2 pin mỗi lần có bản tin.
  * - Card nổi trên map: chỉ dẫn rút gọn turn-by-turn (mock, tự đổi mỗi 6s)
- *   + nút "Mở Google Maps" deep-link google.navigation:q=... (không tự build
- *   nav engine - gap D10).
+ *   + nút "Mở Google Maps": Android dùng scheme google.navigation:q=... (bật
+ *   dẫn đường luôn), iOS dùng universal link https://www.google.com/maps/dir
+ *   (scheme riêng bị Expo Go chặn do không khai báo LSApplicationQueriesSchemes;
+ *   universal link mở app Google Maps nếu đã cài, không thì mở web) - không tự
+ *   build nav engine (gap D10).
  * - Bottom sheet: badge cam "ĐANG ĐẾN HIỆN TRƯỜNG" + mã EMG + ETA sống
  *   (tính từ khoảng cách GPS thật, giả định 30 km/h) + địa điểm + nút đỏ
  *   "ĐÃ ĐẾN HIỆN TRƯỜNG" -> FSM ARRIVED_ON_SCENE -> D-04.
@@ -13,7 +16,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
-import { Alert, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -94,7 +97,15 @@ export default function DriverNavigationScreen({ navigation }) {
 
   const openGoogleMaps = () => {
     const { latitude, longitude } = caseData.coords;
-    Linking.openURL(`google.navigation:q=${latitude},${longitude}&mode=d`).catch(() =>
+    // Android: scheme google.navigation bật chế độ dẫn đường ngay trong app.
+    // iOS: scheme google.navigation/comgooglemaps không tồn tại hoặc bị Expo Go
+    // chặn (app Expo Go không khai báo LSApplicationQueriesSchemes) -> dùng
+    // universal link Maps URLs chính thức của Google, mở được cả trong Expo Go.
+    const url =
+      Platform.OS === 'ios'
+        ? `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}&travelmode=driving`
+        : `google.navigation:q=${latitude},${longitude}&mode=d`;
+    Linking.openURL(url).catch(() =>
       Alert.alert('Không mở được Google Maps', 'Thiết bị chưa cài Google Maps hoặc đã từ chối mở ứng dụng.'),
     );
   };
