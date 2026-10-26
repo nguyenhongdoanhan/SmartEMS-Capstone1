@@ -1,6 +1,7 @@
 /**
  * Nút dùng chung - khớp hệ thống thiết kế SmartEMS.
  * variant: 'primary' (đỏ đầy) | 'secondary' (nền xám nhạt) | 'outline' (viền đỏ) | 'link' (chữ xanh)
+ *        | 'success' (xanh lá - driver nhận ca, D-02/D-04) | 'dark' (navy - driver kết chuyến, D-05/D-06)
  * size: 'md' | 'lg' (CTA lớn full-width).
  * Tích hợp loading (spinner) + disabled, touch target tối thiểu ~48px.
  */
@@ -21,6 +22,8 @@ export default function AppButton({
   textStyle,
 }) {
   const isDisabled = disabled || loading;
+  // Variant nền đậm -> spinner trắng; nền nhạt/transparent -> spinner đỏ.
+  const DARK_BG_VARIANTS = ['primary', 'outline', 'success', 'dark'];
 
   return (
     <Pressable
@@ -36,7 +39,7 @@ export default function AppButton({
       ]}
     >
       {loading ? (
-        <ActivityIndicator color={variant === 'primary' || variant === 'outline' ? colors.textOnPrimary : colors.primary} />
+        <ActivityIndicator color={DARK_BG_VARIANTS.includes(variant) ? colors.textOnPrimary : colors.primary} />
       ) : (
         <>
           {icon}
@@ -66,6 +69,12 @@ const styles = StyleSheet.create({
 
   outline: { backgroundColor: 'transparent', borderWidth: 1.5, borderColor: colors.primary },
   outlineText: { color: colors.primary, fontSize: fontSize.m, fontWeight: fontWeight.semibold },
+
+  success: { backgroundColor: colors.success },
+  successText: { color: colors.textOnPrimary, fontSize: fontSize.m, fontWeight: fontWeight.semibold },
+
+  dark: { backgroundColor: colors.dark },
+  darkText: { color: colors.textOnPrimary, fontSize: fontSize.m, fontWeight: fontWeight.semibold },
 
   link: { backgroundColor: 'transparent', paddingVertical: spacing.xs, paddingHorizontal: 0, minHeight: 32 },
   linkText: { color: colors.blue, fontSize: fontSize.s, fontWeight: fontWeight.semibold },
