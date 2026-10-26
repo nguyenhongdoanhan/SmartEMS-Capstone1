@@ -37,6 +37,9 @@ import SettingsScreen from '../screens/caller/Settings';
 import FirstAidDetailScreen from '../screens/caller/FirstAidDetail';
 import HistoryDetailScreen from '../screens/caller/HistoryDetail';
 import MedicalProfileScreen from '../screens/caller/MedicalProfile';
+import DriverDispatchAlertScreen from '../screens/driver/DispatchAlert';
+import DriverNavigationScreen from '../screens/driver/Navigation';
+import DriverOnSceneScreen from '../screens/driver/OnScene';
 
 const Stack = createNativeStackNavigator();
 
@@ -170,6 +173,21 @@ export default function AppNavigator() {
             headerTintColor: colors.text,
           }}
         />
+
+        {/* ===== Driver: luồng nhận ca GĐ2 - push root để che tab bar =====
+            D-02 điều động (fade, chặn back trong countdown) -> D-03 dẫn đường
+            -> D-04 tại hiện trường (placeholder GĐ2, triage thật GĐ3). */}
+        <Stack.Screen
+          name="DispatchAlert"
+          component={DriverDispatchAlertScreen}
+          options={{
+            headerShown: false,
+            animation: 'fade',
+            contentStyle: { backgroundColor: colors.primary },
+          }}
+        />
+        <Stack.Screen name="DriverNavigation" component={DriverNavigationScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="OnScene" component={DriverOnSceneScreen} options={{ headerShown: false }} />
       </Stack.Navigator>
     </NavigationContainer>
   );

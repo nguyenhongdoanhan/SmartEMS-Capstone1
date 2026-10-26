@@ -3,14 +3,18 @@
  * Tổng quan / Ca trực / Bản đồ / Hồ sơ - tab active màu đỏ (đồng bộ brand caller).
  * - Tab Tổng quan = D-01 (tự vẽ header + safe-area, headerShown:false).
  * - 3 tab còn lại hiện placeholder - nội dung thật ở GĐ4 (D-08, map, D-09).
+ * - Đề xuất điều động mới (caseStatus DISPATCH_PENDING) -> tự đẩy D-02 full
+ *   màn đè lên tab bar bất kể đang đứng tab nào (mock GĐ2, WS backend sau này).
  * - Các màn giữa chuyến (D-02 điều động, D-03 dẫn đường...) là full-screen
- *   KHÔNG có tab bar - sẽ push ở mức root stack (DriverStack) từ GĐ2.
+ *   KHÔNG có tab bar - push ở mức root stack (AppNavigator).
  */
-import React from 'react';
+import React, { useEffect } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 
 import { colors, fontSize, fontWeight } from '../theme';
+import { DRIVER_CASE_STATUS } from '../constants/driverTrip';
+import { useDriverShiftStore } from '../store/driverShift';
 
 import DriverHomeScreen from '../screens/driver/Home';
 import DriverShiftLogScreen from '../screens/driver/ShiftLog';
@@ -26,7 +30,14 @@ const TABS = [
   { name: 'DriverProfile', label: 'Hồ sơ', icon: 'person', component: DriverProfileScreen, title: 'Hồ sơ' },
 ];
 
-export default function DriverTabs() {
+export default function DriverTabs({ navigation }) {
+  const caseStatus = useDriverShiftStore((s) => s.caseStatus);
+
+  // Đề xuất điều động mới -> mở D-02 ngay (màn đăng ký root nên navigate được).
+  useEffect(() => {
+    if (caseStatus === DRIVER_CASE_STATUS.DISPATCH_PENDING) navigation.navigate('DispatchAlert');
+  }, [caseStatus, navigation]);
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => {

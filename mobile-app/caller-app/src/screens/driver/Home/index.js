@@ -11,7 +11,7 @@
  */
 import React, { useMemo } from 'react';
 import { Ionicons } from '@expo/vector-icons';
-import { ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAuthStore } from '../../../store/auth';
@@ -21,6 +21,7 @@ import {
   SHIFT_STATS_MOCK,
   useDriverShiftStore,
 } from '../../../store/driverShift';
+import { ACTIVE_CASE_SCREEN, DRIVER_CASE_STATUS, driverCaseLabel } from '../../../constants/driverTrip';
 import { colors, fontSize, fontWeight, radius, spacing } from '../../../theme';
 
 const WEEKDAYS = ['Chủ nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
@@ -32,9 +33,10 @@ function formatClock(ts) {
   return `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
 }
 
-export default function DriverHomeScreen() {
+export default function DriverHomeScreen({ navigation }) {
   const user = useAuthStore((s) => s.user);
-  const { onDuty, lastPosition, packets, gpsError, startDuty, stopDuty } = useDriverShiftStore();
+  const { onDuty, lastPosition, packets, gpsError, startDuty, stopDuty, caseData, caseStatus } =
+    useDriverShiftStore();
   const insets = useSafeAreaInsets(); // tab Tổng quan không có header -> tự safe-area
 
   // "Thứ 4 · 26/09 · Trạm S1 Sơn Trà" - ngày theo thiết bị, trạm theo mock.
@@ -45,6 +47,14 @@ export default function DriverHomeScreen() {
   }, []);
 
   const initials = (user?.full_name || 'T').trim().charAt(0).toUpperCase();
+
+  // Có ca đang chạy (đã qua D-02) -> thẻ bấm để quay lại màn chuyến tương ứng
+  // (tài xế back khỏi D-03/D-04 vẫn tìm lại được luồng - pattern card C-01).
+  const activeCase = caseData && caseStatus !== DRIVER_CASE_STATUS.DISPATCH_PENDING ? caseData : null;
+  const openActiveCase = () => {
+    const target = ACTIVE_CASE_SCREEN[caseStatus];
+    if (target) navigation.navigate(target);
+  };
 
   // Bật/tắt ca trực = bật/tắt GPS stream (store lo phần xin quyền + watch).
   const toggleDuty = (value) => {
@@ -81,6 +91,23 @@ export default function DriverHomeScreen() {
           <Text style={styles.avatarText}>{initials}</Text>
         </View>
       </View>
+
+      {/* Ca đang chạy -> thẻ trạng thái quay lại màn chuyến (D-03/D-04) */}
+      {activeCase && (
+        <Pressable
+          style={({ pressed }) => [styles.activeCard, pressed && { opacity: 0.9 }]}
+          onPress={openActiveCase}
+        >
+          <View style={styles.activeDot} />
+          <View style={styles.activeInfo}>
+            <Text style={styles.activeTitle}>{driverCaseLabel(caseStatus)}</Text>
+            <Text style={styles.activeSub}>
+              {activeCase.code} · {activeCase.shortAddress} · chạm để tiếp tục
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+        </Pressable>
+      )}
 
       {/* Card 1: TRẠNG THÁI TRỰC - công tắc là gate GPS stream */}
       <View style={[styles.dutyCard, onDuty ? styles.dutyCardOn : styles.dutyCardOff]}>
@@ -168,6 +195,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   avatarText: { fontSize: fontSize.l, fontWeight: fontWeight.bold, color: colors.blue },
+
+  // Card ca đang chạy (D-01 GĐ2)
+  activeCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: radius.l,
+    padding: spacing.l,
+    marginBottom: spacing.m,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  activeDot: { width: 10, height: 10, borderRadius: radius.full, backgroundColor: colors.warning, marginRight: spacing.m },
+  activeInfo: { flex: 1 },
+  activeTitle: { fontSize: fontSize.m, fontWeight: fontWeight.bold, color: colors.text },
+  activeSub: { fontSize: fontSize.xs, color: colors.textSecondary, marginTop: 2 },
 
   // Card trạng thái trực
   dutyCard: { borderRadius: radius.l, padding: spacing.l },
