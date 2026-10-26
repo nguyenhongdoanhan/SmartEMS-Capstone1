@@ -37,6 +37,10 @@ export const colors = {
   info: '#2563EB',
   infoBg: '#EFF4FF',
 
+  // ===== Tím - badge "TẠI BỆNH VIỆN" (D-06 bàn giao) =====
+  purple: '#7C3AED',
+  purpleBg: '#F3E8FF',
+
   // ===== Trạng thái =====
   success: '#22C55E', // banner hoàn tất, checkmark, switch ON
   successStrong: '#166534', // chữ trên badge xanh đậm
