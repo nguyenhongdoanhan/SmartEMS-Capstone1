@@ -1,7 +1,7 @@
 /**
  * Điều hướng chính (unified 1-app-2-vai) - Giai đoạn 2.
  * Luồng: Splash -> Onboarding (chỉ lần đầu) -> Login / Đăng ký 3 bước OTP
- *   -> M-05 Chọn vai trò -> CallerTabs (bottom nav 4 tab) / DriverComingSoon.
+ *   -> M-05 Chọn vai trò -> CallerTabs (bottom nav 4 tab) / DriverTabs (bottom nav 4 tab).
  * currentRole = null (chưa chọn) -> RoleChoice (thay default 'caller' của GĐ1).
  * SOS / Tracking / Settings push ở mức ROOT để che bottom tab (C-04 là map full màn).
  * Lưu ý: KHÔNG bọc Stack.Screen trong Fragment - React.Children.forEach của
@@ -28,7 +28,7 @@ import RegisterOtpScreen from '../screens/auth/RegisterOtp';
 import RegisterProfileScreen from '../screens/auth/RegisterProfile';
 import RoleChoiceScreen from '../screens/auth/RoleChoice';
 import CallerTabs from './CallerTabs';
-import DriverComingSoonScreen from '../screens/driver/ComingSoon';
+import DriverTabs from './DriverTabs';
 import SOSScreen from '../screens/caller/SOS';
 import MatchingScreen from '../screens/caller/Matching';
 import TrackingScreen from '../screens/caller/Tracking';
@@ -120,11 +120,7 @@ export default function AppNavigator() {
           <Stack.Screen name="RoleChoice" component={RoleChoiceScreen} options={{ headerShown: false }} />
         ) : null}
         {token && currentRole === 'driver' ? (
-          <Stack.Screen
-            name="DriverComingSoon"
-            component={DriverComingSoonScreen}
-            options={{ headerShown: false }}
-          />
+          <Stack.Screen name="DriverTabs" component={DriverTabs} options={{ headerShown: false }} />
         ) : null}
         {token && currentRole === 'caller' ? (
           <Stack.Screen name="CallerTabs" component={CallerTabs} options={{ headerShown: false }} />

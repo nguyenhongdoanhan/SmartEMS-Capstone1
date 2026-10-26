@@ -1,7 +1,7 @@
 /**
  * M-05 Chọn vai trò - hiện sau đăng nhập/đăng ký khi chưa có vai trò (thay vì
  * default 'caller' như Giai đoạn 1). Người dùng chủ động chọn, persist AsyncStorage,
- * chọn xong AppNavigator tự chuyển sang CallerTabs / DriverComingSoon.
+ * chọn xong AppNavigator tự chuyển sang CallerTabs / DriverTabs.
  * Nội dung 2 card bám đúng mockup M-05 (Q7: giữ nguyên văn).
  */
 import React, { useState } from 'react';
