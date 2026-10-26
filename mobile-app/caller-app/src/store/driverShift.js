@@ -15,8 +15,11 @@
  *   RETURNING_TRIP_REASSIGNED).
  * - KHÔNG persist onDuty/case: subscription GPS sống trong phiên app. Mở lại
  *   app luôn OFF cho an toàn - tránh stream ngầm chạy mà tài xế không biết.
- * - Xe / trạm / thống kê 3 ô là mock (backend chưa có bảng assignment và
- *   shift endpoints - gap D6/D7): AMB-07 gán cố định cho demo.
+ * - Xe / trạm là mock (backend chưa có bảng assignment - gap D6): AMB-07 gán
+ *   cố định cho demo. Riêng THỐNG KÊ (ca/km/giờ trực) từ GĐ4 là SỐ THẬT:
+ *   chuyến hoàn tất lưu store/driverHistory (AsyncStorage, gap D9), km tích lũy
+ *   theo từng bản tin GPS của chuyến đang chạy (tripKm), giờ trực tính từ
+ *   onDutySince.
  */
 import { create } from 'zustand';
 import * as Location from 'expo-location';
@@ -24,6 +27,8 @@ import * as Location from 'expo-location';
 import { ENV } from '../config/env';
 import { DRIVER_CASE_STATUS } from '../constants/driverTrip';
 import { generateDispatch, generateReassignment } from '../services/mock/mockDriverApi';
+import { haversineKm } from '../utils/geo';
+import { archiveDriverTrip } from './driverHistory';
 
 /** Xe của tài xế trong phiên demo (mock - gap D6: backend chưa có gán xe). */
 export const DRIVER_VEHICLE = {
@@ -39,12 +44,15 @@ export const DRIVER_STATION = {
   coords: { latitude: 16.0785, longitude: 108.2467 },
 };
 
-/** Thống kê 3 ô của D-01 (mock - GĐ4 nối shift data thật, gap D7). */
-export const SHIFT_STATS_MOCK = {
-  tripsToday: 3, // "3 ca đã chạy"
-  kmToday: 62, // "62 km hôm nay"
-  dutyHoursLabel: '4h30', // "4h30 giờ trực"
-};
+/** Các pha mà GPS được tính vào km CHUYẾN đang chạy (nhận ca -> bàn giao xong).
+ *  Sau completeHandover xe rỗng (RETURNING) nên km không thuộc chuyến nào. */
+const TRIP_KM_STATUSES = [
+  DRIVER_CASE_STATUS.DRIVER_ACCEPTED,
+  DRIVER_CASE_STATUS.DRIVER_EN_ROUTE,
+  DRIVER_CASE_STATUS.ARRIVED_ON_SCENE,
+  DRIVER_CASE_STATUS.TRANSPORTING,
+  DRIVER_CASE_STATUS.AT_HOSPITAL,
+];
 
 /** Chu kỳ GPS stream khi đang trực (ms) - đúng đặc tả 3 giây/lần. */
 export const GPS_INTERVAL_MS = 3000;
@@ -95,6 +103,10 @@ export const useDriverShiftStore = create((set, get) => ({
   hospitalArrivedAt: null,
   /** Ca đề xuất TÁI ĐIỀU ĐỘNG khi đang RETURNING (D-07 popup) - không đè caseData. */
   reassignmentCase: null,
+  /** Giờ bấm CHẤP NHẬN ca hiện tại (D-08 tính "Phản hồi Xm'Ys" tới hiện trường). */
+  acceptedAt: null,
+  /** Km GPS tích lũy của CHUYẾN đang chạy (D-01 "km hôm nay" + D-08 quãng đường). */
+  tripKm: 0,
 
   /**
    * Bật ca trực: xin quyền vị trí rồi mở GPS stream 3s/lần.
@@ -115,9 +127,19 @@ export const useDriverShiftStore = create((set, get) => ({
         { accuracy: Location.Accuracy.High, timeInterval: GPS_INTERVAL_MS },
         (position) => {
           const { latitude, longitude, accuracy } = position.coords;
+          const { lastPosition: prev, caseStatus } = get();
+          // GĐ4: tích lũy km chuyến đang chạy = haversine 2 bản tin liền nhau.
+          // Lọc nhiễu: < 10 m coi như đứng yên (GPS jitter), > 120 m trong 3s
+          // (= 144 km/h) coi là bước nhảy GPS - cả hai đều không cộng.
+          let { tripKm } = get();
+          if (prev && TRIP_KM_STATUSES.includes(caseStatus)) {
+            const d = haversineKm(prev, { latitude, longitude });
+            if (d != null && d >= 0.01 && d <= 0.12) tripKm += d;
+          }
           set((s) => ({
             lastPosition: { latitude, longitude, accuracy, at: Date.now() },
             packets: s.packets + 1,
+            tripKm,
             gpsError: null, // nhận được bản tin = stream đang khỏe
           }));
           // GĐ3 (gap D4): !MOCK_MODE -> POST /ambulances/{id}/location
@@ -147,6 +169,8 @@ export const useDriverShiftStore = create((set, get) => ({
       caseStatus: null,
       triage: null,
       reassignmentCase: null,
+      acceptedAt: null,
+      tripKm: 0,
     });
   },
 
@@ -154,12 +178,12 @@ export const useDriverShiftStore = create((set, get) => ({
 
   /** Nhận đề xuất điều động (từ mock scheduler, sau này là WS backend). */
   receiveDispatch: (caseData) =>
-    set({ caseData, caseStatus: DRIVER_CASE_STATUS.DISPATCH_PENDING, triage: null }),
+    set({ caseData, caseStatus: DRIVER_CASE_STATUS.DISPATCH_PENDING, triage: null, acceptedAt: null, tripKm: 0 }),
 
   /** D-02 bấm CHẤP NHẬN (hoặc hết 12s xem như từ chối - FE tự chốt). */
   acceptDispatch: () => {
     if (get().caseStatus !== DRIVER_CASE_STATUS.DISPATCH_PENDING) return;
-    set({ caseStatus: DRIVER_CASE_STATUS.DRIVER_ACCEPTED });
+    set({ caseStatus: DRIVER_CASE_STATUS.DRIVER_ACCEPTED, acceptedAt: Date.now() });
   },
 
   /** Vào D-03 bắt đầu chạy tới hiện trường. */
@@ -197,8 +221,30 @@ export const useDriverShiftStore = create((set, get) => ({
    * MOCK_MODE: hẹn đề xuất tái điều động 6-10s sau (gap D1).
    */
   completeHandover: () => {
-    if (get().caseStatus !== DRIVER_CASE_STATUS.AT_HOSPITAL) return;
-    set({ caseStatus: DRIVER_CASE_STATUS.RETURNING });
+    const s = get();
+    if (s.caseStatus !== DRIVER_CASE_STATUS.AT_HOSPITAL) return;
+    // GĐ4: bàn giao xong = TRIP_COMPLETED của ca này -> ghi lịch sử ca trực
+    // (D-08) TRƯỚC khi xe chuyển RETURNING. Nếu ngay sau đó bị tái điều động
+    // (acceptReassignment đè ca mới) thì chuyến cũ vẫn đã ghi đủ.
+    const c = s.caseData;
+    if (c) {
+      archiveDriverTrip({
+        id: c.id,
+        code: c.code,
+        shortAddress: c.shortAddress || c.address || '',
+        priority: c.priority,
+        acceptedAt: s.acceptedAt,
+        onSceneAt: s.onSceneAt,
+        completedAt: Date.now(),
+        responseSec:
+          s.acceptedAt && s.onSceneAt ? Math.max(0, Math.round((s.onSceneAt - s.acceptedAt) / 1000)) : null,
+        hospitalName: c.hospital?.name || null,
+        triageLevel: s.triage?.level || null,
+        reassigned: c.reassigned === true, // nhận trên tuyến về trạm (D-07)
+        km: Math.round((s.tripKm || 0) * 10) / 10,
+      });
+    }
+    set({ caseStatus: DRIVER_CASE_STATUS.RETURNING, acceptedAt: null, tripKm: 0 });
     get().scheduleReassignment(REASSIGN_AFTER_RETURNING_MS);
   },
 
@@ -213,6 +259,8 @@ export const useDriverShiftStore = create((set, get) => ({
       reassignmentCase: null,
       onSceneAt: null,
       hospitalArrivedAt: null,
+      acceptedAt: Date.now(), // km + "Phản hồi" của CHUYẾN MỚI tính từ đây
+      tripKm: 0,
     });
   },
 
@@ -231,7 +279,7 @@ export const useDriverShiftStore = create((set, get) => ({
 
   /** Từ chối ca (nút bấm hoặc hết 12s) - ghi nhận rồi chờ ca khác. */
   declineDispatch: () => {
-    set({ caseData: null, caseStatus: null });
+    set({ caseData: null, caseStatus: null, acceptedAt: null, tripKm: 0 });
     get().scheduleNextDispatch([NEXT_AFTER_DECLINE_MS, NEXT_AFTER_DECLINE_MS]);
   },
 
@@ -245,6 +293,8 @@ export const useDriverShiftStore = create((set, get) => ({
       reassignmentCase: null,
       onSceneAt: null,
       hospitalArrivedAt: null,
+      acceptedAt: null,
+      tripKm: 0,
     });
     get().scheduleNextDispatch([NEXT_AFTER_CASE_MS, NEXT_AFTER_CASE_MS]);
   },

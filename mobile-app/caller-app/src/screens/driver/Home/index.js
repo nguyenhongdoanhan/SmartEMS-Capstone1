@@ -5,7 +5,9 @@
  *   thật 3s/lần (watchPositionAsync trong store driverShift) - tắt trực là đóng GPS.
  * - Card xe: AMB-07 + dòng GPS live (tọa độ bản tin cuối, số bản tin đã gửi)
  *   để nghiệm thu GPS thật ngay ở GĐ1.
- * - Thống kê 3 ô: ca đã chạy / km hôm nay / giờ trực (mock - GĐ4 nối shift thật).
+ * - Thống kê 3 ô (GĐ4 = SỐ THẬT): ca đã chạy + km hôm nay từ driverHistory
+ *   (AsyncStorage) cộng km chuyến đang chạy (tripKm), giờ trực tính sống từ
+ *   onDutySince - render lại theo từng bản tin GPS nên tự nhảy số.
  * - Alert xanh nhạt: chính sách tái điều động khi RETURNING (D-07).
  * - Tab bar 4 mục nằm ở DriverTabs (tab này headerShown:false -> tự safe-area).
  */
@@ -15,10 +17,10 @@ import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-nat
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAuthStore } from '../../../store/auth';
+import { useDriverHistoryStore } from '../../../store/driverHistory';
 import {
   DRIVER_STATION,
   DRIVER_VEHICLE,
-  SHIFT_STATS_MOCK,
   useDriverShiftStore,
 } from '../../../store/driverShift';
 import { ACTIVE_CASE_SCREEN, DRIVER_CASE_STATUS, driverCaseLabel } from '../../../constants/driverTrip';
@@ -35,8 +37,9 @@ function formatClock(ts) {
 
 export default function DriverHomeScreen({ navigation }) {
   const user = useAuthStore((s) => s.user);
-  const { onDuty, lastPosition, packets, gpsError, startDuty, stopDuty, caseData, caseStatus } =
+  const { onDuty, onDutySince, lastPosition, packets, gpsError, startDuty, stopDuty, caseData, caseStatus, tripKm } =
     useDriverShiftStore();
+  const historyRecords = useDriverHistoryStore((s) => s.records);
   const insets = useSafeAreaInsets(); // tab Tổng quan không có header -> tự safe-area
 
   // "Thứ 4 · 26/09 · Trạm S1 Sơn Trà" - ngày theo thiết bị, trạm theo mock.
@@ -51,6 +54,14 @@ export default function DriverHomeScreen({ navigation }) {
   // Có ca đang chạy (đã qua D-02) -> thẻ bấm để quay lại màn chuyến tương ứng
   // (tài xế back khỏi D-03/D-04 vẫn tìm lại được luồng - pattern card C-01).
   const activeCase = caseData && caseStatus !== DRIVER_CASE_STATUS.DISPATCH_PENDING ? caseData : null;
+
+  // GĐ4: thống kê THẬT thay SHIFT_STATS_MOCK - chuyến hoàn tất hôm nay lấy từ
+  // driverHistory, km cộng dồn thêm chuyến đang chạy, giờ trực từ onDutySince.
+  const todayKey = new Date().toDateString();
+  const todayTrips = historyRecords.filter((r) => new Date(r.completedAt).toDateString() === todayKey);
+  const kmToday = todayTrips.reduce((sum, r) => sum + (r.km || 0), 0) + (activeCase ? tripKm : 0);
+  const dutyMin = onDuty && onDutySince ? Math.floor((Date.now() - onDutySince) / 60000) : 0;
+  const dutyLabel = `${Math.floor(dutyMin / 60)}h${String(dutyMin % 60).padStart(2, '0')}`;
   const openActiveCase = () => {
     const target = ACTIVE_CASE_SCREEN[caseStatus];
     if (target) navigation.navigate(target);
@@ -149,18 +160,18 @@ export default function DriverHomeScreen({ navigation }) {
         ) : null}
       </View>
 
-      {/* Thống kê 3 ô: ca đã chạy / km hôm nay / giờ trực (mock GĐ1) */}
+      {/* Thống kê 3 ô (GĐ4: số thật từ driverHistory + phiên trực hiện tại) */}
       <View style={styles.statsRow}>
         <View style={styles.statBox}>
-          <Text style={styles.statValue}>{SHIFT_STATS_MOCK.tripsToday}</Text>
+          <Text style={styles.statValue}>{todayTrips.length}</Text>
           <Text style={styles.statLabel}>ca đã chạy</Text>
         </View>
         <View style={styles.statBox}>
-          <Text style={styles.statValue}>{SHIFT_STATS_MOCK.kmToday}</Text>
+          <Text style={styles.statValue}>{Math.round(kmToday * 10) / 10}</Text>
           <Text style={styles.statLabel}>km hôm nay</Text>
         </View>
         <View style={styles.statBox}>
-          <Text style={styles.statValue}>{SHIFT_STATS_MOCK.dutyHoursLabel}</Text>
+          <Text style={styles.statValue}>{dutyLabel}</Text>
           <Text style={styles.statLabel}>giờ trực</Text>
         </View>
       </View>

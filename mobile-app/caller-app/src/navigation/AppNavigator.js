@@ -15,6 +15,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { useAuthStore } from '../store/auth';
 import { useEmergencyStore } from '../store/emergency';
+import { useDriverHistoryStore } from '../store/driverHistory';
 import { useHistoryStore } from '../store/history';
 import { useMedicalStore } from '../store/medical';
 import { useSettingsStore } from '../store/settings';
@@ -88,6 +89,8 @@ export default function AppNavigator() {
     useHistoryStore.getState().init();
     useMedicalStore.getState().init();
     useSettingsStore.getState().init();
+    // GĐ4 driver: lịch sử chuyến của tài xế (D-08 + stats D-01)
+    useDriverHistoryStore.getState().init();
     const timer = setTimeout(() => setSplashMinDone(true), SPLASH_MIN_MS);
     return () => clearTimeout(timer);
   }, []);
