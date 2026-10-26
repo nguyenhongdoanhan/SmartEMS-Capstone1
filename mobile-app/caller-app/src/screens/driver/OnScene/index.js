@@ -6,7 +6,7 @@
  * - DẤU SINH TỒN: 3 ô nhập SpO₂ / nhịp tim / huyết áp (mặc định 92 · 110 · 90/60).
  * - Ý THỨC (AVPU): Tỉnh / Âm thanh / Đau / Không đáp ứng (mặc định Tỉnh).
  * - Ô ghi chú + hộp xanh "Gửi trước cho BV — khoa cấp cứu chuẩn bị tiếp nhận".
- * - Nút xanh lá "VẬN CHUYỂN BỆNH NHÂN →" -> startTransport (FSM TRANSPORTING,
+ * - Nút xanh lá "VẬN CHUYỂN BỆNH NHÂN" (bỏ mũi tên 2 đầu theo review) -> startTransport (FSM TRANSPORTING,
  *   lưu phiếu triage) -> D-05.
  * FSM vào màn là ARRIVED_ON_SCENE (D-03 đã chốt khi bấm ĐÃ ĐẾN HIỆN TRƯỜNG).
  */
@@ -200,9 +200,8 @@ export default function DriverOnSceneScreen({ navigation }) {
         <AppButton
           variant="success"
           size="lg"
-          title="VẬN CHUYỂN BỆNH NHÂN →"
+          title="VẬN CHUYỂN BỆNH NHÂN"
           onPress={startTrip}
-          icon={<Ionicons name="arrow-forward" size={20} color={colors.textOnPrimary} />}
         />
       </View>
     </SafeAreaView>

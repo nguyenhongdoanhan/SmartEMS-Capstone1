@@ -4,7 +4,9 @@
  * - Card: tên BV + "Khoa cấp cứu · tiếp nhận HH:MM" (giờ arriveAtHospital).
  * - Checklist XÁC NHẬN BÀN GIAO (1 chạm): Bệnh nhân & hồ sơ y tế · Dấu sinh
  *   tồn & triage đã gửi · Tài sản cá nhân (2 mục đầu đã tick sẵn).
- * - Nút navy "HOÀN TẤT BÀN GIAO → VỀ TRẠM" (mở khoá khi tick đủ 3 mục).
+ * - Nút navy "HOÀN TẤT BÀN GIAO → VỀ TRẠM" (mở khoá khi tick đủ 3 mục; bỏ icon mũi tên
+ *   đầu theo review, "→" dán với "VỀ TRẠM" bằng NBSP để Android không vắt mũi tên
+ *   xuống cuối dòng khi buộc phải wrap).
  * - Note: "Trạng thái xe chuyển sang RETURNING — có thể được tái điều động"
  *   -> completeHandover (FSM RETURNING) -> D-07.
  * Vào màn là đang AT_HOSPITAL (D-05 đã chốt khi bấm ĐÃ ĐẾN BỆNH VIỆN).
@@ -114,10 +116,12 @@ export default function DriverHandoverScreen({ navigation }) {
         <AppButton
           variant="dark"
           size="lg"
-          title="HOÀN TẤT BÀN GIAO → VỀ TRẠM"
+          // NBSP (\u00A0) dán chặt "→" với "VỀ TRẠM": Roboto Android in hoa rộng hơn SF iOS
+          // nên có máy phải wrap - khi đó mũi tên dẫn đầu dòng dưới (đẹp) thay vì vắt
+          // cuối dòng trên (bug đã thấy trên máy Android thật).
+          title={'HOÀN TẤT BÀN GIAO →\u00A0VỀ\u00A0TRẠM'}
           onPress={finish}
           disabled={!allChecked}
-          icon={<Ionicons name="arrow-forward" size={20} color={colors.textOnPrimary} />}
         />
         {!allChecked && <Text style={styles.lockHint}>Xác nhận đủ 3 mục để tiếp tục</Text>}
       </View>
