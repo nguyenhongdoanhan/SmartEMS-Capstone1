@@ -126,6 +126,7 @@ export default function DriverProfileScreen() {
         title="Kết thúc ca trực"
         onPress={confirmStop}
         disabled={!onDuty}
+        style={styles.endDutyButton}
         textStyle={{ color: colors.primary, fontWeight: fontWeight.bold }}
       />
     </ScrollView>
@@ -219,4 +220,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.s,
   },
   menuText: { flex: 1, fontSize: fontSize.m, color: colors.text, fontWeight: fontWeight.medium },
+
+  // CTA cuối - tách khỏi nhóm menu phía trên (nhịp spacing.l như các màn D-04..D-07)
+  endDutyButton: { marginTop: spacing.l },
 });
