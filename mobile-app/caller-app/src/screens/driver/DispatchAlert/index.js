@@ -1,7 +1,8 @@
 /**
  * D-02 Thông báo điều động (full-screen, KHÔNG tab bar) - đúng mockup:
  * - Khối đỏ 2/3 màn: icon đèn nháy (pulse) + "YÊU CẦU ĐIỀU ĐỘNG MỚI"
- *   + vòng đếm ngược 12s (ring SVG co dần) + "Tự đóng sau 12 giây".
+ *   + dòng phụ "Tự động hủy sau" + vòng đếm ngược 12s (ring SVG co dần)
+ *   với số giây + đơn vị "s" đặt gọn giữa vòng.
  * - Card trắng: badge CRITICAL + mã EMG + địa chỉ + 3 số (khoảng cách · ETA ·
  *   nạn nhân) + hộp vàng ghi chú hiện trường.
  * - 2 nút: "CHẤP NHẬN — BẮT ĐẦU CHUYẾN ĐI" (xanh lá - quy ước nhận ca) /
@@ -98,6 +99,7 @@ export default function DriverDispatchAlertScreen({ navigation }) {
           <Ionicons name="notifications" size={38} color={colors.textOnPrimary} />
         </Animated.View>
         <Text style={styles.title}>YÊU CẦU ĐIỀU ĐỘNG MỚI</Text>
+        <Text style={styles.sub}>Tự động hủy sau</Text>
 
         <View style={styles.ringWrap}>
           <Svg width={RING_SIZE} height={RING_SIZE}>
@@ -122,13 +124,11 @@ export default function DriverDispatchAlertScreen({ navigation }) {
               transform={`rotate(-90 ${RING_SIZE / 2} ${RING_SIZE / 2})`}
             />
           </Svg>
-          <View style={styles.ringCenter}>
+          <View style={styles.ringCenter} pointerEvents="none">
             <Text style={styles.countNum}>{remaining}</Text>
-            <Text style={styles.countUnit}>giây</Text>
+            <Text style={styles.countUnit}>s</Text>
           </View>
         </View>
-
-        <Text style={styles.sub}>Tự đóng sau {DISPATCH_COUNTDOWN_S} giây</Text>
       </View>
 
       {/* ===== Card ca + 2 nút ===== */}
@@ -168,6 +168,7 @@ export default function DriverDispatchAlertScreen({ navigation }) {
           title="CHẤP NHẬN — BẮT ĐẦU CHUYẾN ĐI"
           onPress={accept}
           icon={<Ionicons name="checkmark-circle" size={20} color={colors.textOnPrimary} />}
+          style={styles.acceptBtn}
         />
         <AppButton variant="secondary" size="lg" title="Từ chối (ghi nhận hệ thống)" onPress={decline} style={styles.declineBtn} />
       </View>
@@ -201,14 +202,21 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   ringWrap: { marginTop: spacing.xl, alignItems: 'center', justifyContent: 'center' },
+  sub: { color: 'rgba(255, 255, 255, 0.75)', fontSize: fontSize.s, marginTop: spacing.s },
   ringCenter: {
     ...StyleSheet.absoluteFillObject,
-    alignItems: 'center',
+    flexDirection: 'row',
+    alignItems: 'baseline',
     justifyContent: 'center',
   },
-  countNum: { color: colors.textOnPrimary, fontSize: 44, fontWeight: fontWeight.bold, lineHeight: 48 },
-  countUnit: { color: 'rgba(255, 255, 255, 0.75)', fontSize: fontSize.xs, fontWeight: fontWeight.medium },
-  sub: { color: 'rgba(255, 255, 255, 0.75)', fontSize: fontSize.s, marginTop: spacing.l },
+  countNum: { color: colors.textOnPrimary, fontSize: 46, fontWeight: fontWeight.bold, lineHeight: 50 },
+  countUnit: {
+    color: 'rgba(255, 255, 255, 0.85)',
+    fontSize: 20,
+    fontWeight: fontWeight.semibold,
+    lineHeight: 24,
+    marginLeft: 3,
+  },
 
   bottom: {
     flex: 1,
@@ -252,5 +260,6 @@ const styles = StyleSheet.create({
     marginTop: spacing.m,
   },
   noteText: { fontSize: fontSize.s, color: colors.text, lineHeight: 19 },
+  acceptBtn: { marginTop: spacing.xl },
   declineBtn: { marginTop: spacing.m },
 });
