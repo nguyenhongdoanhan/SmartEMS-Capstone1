@@ -17,8 +17,15 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title=f"{settings.app_name} API", lifespan=lifespan)
-app.add_middleware(CORSMiddleware, allow_origins=settings.cors_origins,
-                   allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+
+# Đã bật CORS cho phép tất cả các nguồn gọi vào để dứt điểm lỗi 400 Bad Request
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 API = "/api/v1"
 app.include_router(auth.router, prefix=f"{API}/auth", tags=["auth"])
