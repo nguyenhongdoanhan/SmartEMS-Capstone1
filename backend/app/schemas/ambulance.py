@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 
@@ -14,3 +16,7 @@ class AmbulanceOut(BaseModel):
     status: str
     latitude: float | None = None
     longitude: float | None = None
+
+
+class StatusUpdate(BaseModel):
+    status: Literal["AVAILABLE", "ON_TRIP", "OFFLINE"]
