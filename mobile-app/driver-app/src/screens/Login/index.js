@@ -3,6 +3,7 @@ import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   ActivityIndicator, ScrollView, KeyboardAvoidingView, Platform,
 } from 'react-native';
+import { authApi, setAuthToken } from '../../services/api';
 
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState('');
@@ -18,11 +19,21 @@ export default function LoginScreen({ navigation }) {
     }
     setError('');
     setLoading(true);
-    // TODO: gọi API /auth/login ở bước sau. Hiện tại chạy chế độ demo.
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      const { access_token } = await authApi.login(email.trim(), password);
+      await setAuthToken(access_token);
+      const me = await authApi.me();
+      if (me.role !== 'driver' && me.role !== 'admin') {
+        await setAuthToken(null);
+        setError('Tài khoản này không phải tài xế');
+        return;
+      }
       navigation.replace('Home');
-    }, 500);
+    } catch (e) {
+      setError(e.message || 'Không kết nối được máy chủ');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -83,8 +94,6 @@ export default function LoginScreen({ navigation }) {
               )}
             </TouchableOpacity>
           </View>
-
-          <Text style={styles.demo}>Chế độ demo: nhập email và mật khẩu bất kỳ</Text>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -122,5 +131,4 @@ const styles = StyleSheet.create({
     alignItems: 'center', marginTop: 4,
   },
   buttonText: { color: '#fff', fontSize: 17, fontWeight: 'bold' },
-  demo: { textAlign: 'center', color: 'rgba(255,255,255,0.75)', marginTop: 18, fontSize: 12 },
 });
