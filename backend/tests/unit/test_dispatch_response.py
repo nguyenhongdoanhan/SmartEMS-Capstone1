@@ -1,4 +1,4 @@
-import asyncio
+﻿import asyncio
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
@@ -17,6 +17,7 @@ def make_db(dispatch, ambulance):
     db.get = AsyncMock(side_effect=lambda model, _id: dispatch if model is Dispatch else ambulance)
     db.add = MagicMock()
     db.commit = AsyncMock()
+    db.flush = AsyncMock(side_effect=lambda: None)
     return db
 
 
