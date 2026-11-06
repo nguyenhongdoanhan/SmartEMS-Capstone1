@@ -1,7 +1,7 @@
 /**
  * Điều hướng chính (unified 1-app-2-vai) - Giai đoạn 2.
  * Luồng: Splash -> Onboarding (chỉ lần đầu) -> Login / Đăng ký 3 bước OTP
- *   -> M-05 Chọn vai trò -> CallerTabs (bottom nav 4 tab) / DriverComingSoon.
+ *   -> M-05 Chọn vai trò -> CallerTabs (bottom nav 4 tab) / DriverTabs (bottom nav 4 tab).
  * currentRole = null (chưa chọn) -> RoleChoice (thay default 'caller' của GĐ1).
  * SOS / Tracking / Settings push ở mức ROOT để che bottom tab (C-04 là map full màn).
  * Lưu ý: KHÔNG bọc Stack.Screen trong Fragment - React.Children.forEach của
@@ -15,6 +15,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { useAuthStore } from '../store/auth';
 import { useEmergencyStore } from '../store/emergency';
+import { useDriverHistoryStore } from '../store/driverHistory';
 import { useHistoryStore } from '../store/history';
 import { useMedicalStore } from '../store/medical';
 import { useSettingsStore } from '../store/settings';
@@ -28,7 +29,7 @@ import RegisterOtpScreen from '../screens/auth/RegisterOtp';
 import RegisterProfileScreen from '../screens/auth/RegisterProfile';
 import RoleChoiceScreen from '../screens/auth/RoleChoice';
 import CallerTabs from './CallerTabs';
-import DriverComingSoonScreen from '../screens/driver/ComingSoon';
+import DriverTabs from './DriverTabs';
 import SOSScreen from '../screens/caller/SOS';
 import MatchingScreen from '../screens/caller/Matching';
 import TrackingScreen from '../screens/caller/Tracking';
@@ -37,6 +38,12 @@ import SettingsScreen from '../screens/caller/Settings';
 import FirstAidDetailScreen from '../screens/caller/FirstAidDetail';
 import HistoryDetailScreen from '../screens/caller/HistoryDetail';
 import MedicalProfileScreen from '../screens/caller/MedicalProfile';
+import DriverDispatchAlertScreen from '../screens/driver/DispatchAlert';
+import DriverNavigationScreen from '../screens/driver/Navigation';
+import DriverOnSceneScreen from '../screens/driver/OnScene';
+import DriverTransportScreen from '../screens/driver/Transport';
+import DriverHandoverScreen from '../screens/driver/Handover';
+import DriverReturningScreen from '../screens/driver/Returning';
 
 const Stack = createNativeStackNavigator();
 
@@ -82,6 +89,8 @@ export default function AppNavigator() {
     useHistoryStore.getState().init();
     useMedicalStore.getState().init();
     useSettingsStore.getState().init();
+    // GĐ4 driver: lịch sử chuyến của tài xế (D-08 + stats D-01)
+    useDriverHistoryStore.getState().init();
     const timer = setTimeout(() => setSplashMinDone(true), SPLASH_MIN_MS);
     return () => clearTimeout(timer);
   }, []);
@@ -120,11 +129,7 @@ export default function AppNavigator() {
           <Stack.Screen name="RoleChoice" component={RoleChoiceScreen} options={{ headerShown: false }} />
         ) : null}
         {token && currentRole === 'driver' ? (
-          <Stack.Screen
-            name="DriverComingSoon"
-            component={DriverComingSoonScreen}
-            options={{ headerShown: false }}
-          />
+          <Stack.Screen name="DriverTabs" component={DriverTabs} options={{ headerShown: false }} />
         ) : null}
         {token && currentRole === 'caller' ? (
           <Stack.Screen name="CallerTabs" component={CallerTabs} options={{ headerShown: false }} />
@@ -174,6 +179,25 @@ export default function AppNavigator() {
             headerTintColor: colors.text,
           }}
         />
+
+        {/* ===== Driver: vòng đời ca GĐ2+GĐ3 - push root để che tab bar =====
+            D-02 điều động (fade, chặn back trong countdown) -> D-03 dẫn đường
+            -> D-04 triage -> D-05 vận chuyển -> D-06 bàn giao -> D-07 returning
+            (popup tái điều động quay lại D-03 với ca mới). */}
+        <Stack.Screen
+          name="DispatchAlert"
+          component={DriverDispatchAlertScreen}
+          options={{
+            headerShown: false,
+            animation: 'fade',
+            contentStyle: { backgroundColor: colors.primary },
+          }}
+        />
+        <Stack.Screen name="DriverNavigation" component={DriverNavigationScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="OnScene" component={DriverOnSceneScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="DriverTransport" component={DriverTransportScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="DriverHandover" component={DriverHandoverScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="DriverReturning" component={DriverReturningScreen} options={{ headerShown: false }} />
       </Stack.Navigator>
     </NavigationContainer>
   );
