@@ -75,4 +75,19 @@ export const authApi = {
 export const emergencyApi = {
   /** POST /emergencies - body { latitude, longitude, description } -> EmergencyOut */
   createSOS: (data) => request('/emergencies', { method: 'POST', body: data }),
+
+  /**
+   * POST /emergencies/{id}/rating - ĐÁNG SẬP: backend CHƯA có endpoint này (TODO #8).
+   * Khi backend bổ sung sẽ tự chạy, hiện sẽ nhận 404 - UI đã bắt lỗi để không chặn user.
+   */
+  rateTrip: (emergencyId, stars, note) =>
+    request(`/emergencies/${emergencyId}/rating`, { method: 'POST', body: { stars, note } }),
+
+  /** DELETE /emergencies/{id} - ĐÁNG SẬP: backend CHƯA có endpoint hủy (TODO). */
+  cancelSOS: (emergencyId) => request(`/emergencies/${emergencyId}`, { method: 'DELETE' }),
+};
+
+/** Backend /hospitals hiện là stub (TODO #9) - endpoint đã có sẵn trong app.py. */
+export const hospitalsApi = {
+  nearby: () => request('/hospitals'),
 };

@@ -39,3 +39,23 @@ export function formatCoords({ latitude, longitude, accuracy } = {}) {
   const base = `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
   return typeof accuracy === 'number' ? `${base} (±${Math.round(accuracy)}m)` : base;
 }
+
+/**
+ * Địa chỉ dạng text từ tọa độ (C-01 "Xin chào" card, C-02 ô địa chỉ).
+ * Dùng reverseGeocodeAsync của expo-location - KHÔNG cần Google Maps key.
+ * @returns {Promise<string|null>} vd "254 Nguyễn Văn Linh, Hải Châu" | null nếu không tra được
+ */
+export async function reverseGeocodeAddress({ latitude, longitude }) {
+  try {
+    const results = await Location.reverseGeocodeAsync({ latitude, longitude });
+    if (!results || !results.length) return null;
+    const r = results[0];
+    // Ghép các phần có ý nghĩa nhất: số nhà + tên đường, sau đó quận/huyện
+    const street = [r.streetNumber, r.street].filter(Boolean).join(' ');
+    const area = [r.district, r.subregion, r.city].filter(Boolean)[0] || r.region || '';
+    const parts = [street, area].filter(Boolean);
+    return parts.length ? parts.join(', ') : [r.name].filter(Boolean).join('') || null;
+  } catch (err) {
+    return null; // reverse geocode thất bại không chặn luồng SOS - caller vẫn gửi tọa độ
+  }
+}
