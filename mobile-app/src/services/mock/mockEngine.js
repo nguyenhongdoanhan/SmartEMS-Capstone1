@@ -11,7 +11,8 @@
  * GĐ3 thêm message "ambulance_position" (vị trí xe di chuyển trên map C-04):
  *   { "type": "ambulance_position", "emergency_id", "trip_id",
  *     "latitude", "longitude", "eta_minutes", "distance_km" }
- * Tương ứng POST /ambulances/{id}/location mà driver-app sẽ gọi trong tương lai.
+ * Tương ứng POST /ambulances/{id}/location mà phần driver (tab tài xế trong app
+ * hợp nhất) sẽ gọi qua ambulanceApi.postLocation khi nối backend thật.
  *
  * LƯU Ý DEMO: thời gian tuyến nén còn ~50 giây (ETA 8' chỉ là hiển thị theo design);
  * chỉnh pacing ở các hằng số bên dưới.
