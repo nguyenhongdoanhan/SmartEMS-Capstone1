@@ -91,3 +91,22 @@ export const emergencyApi = {
 export const hospitalsApi = {
   nearby: () => request('/hospitals'),
 };
+
+/*
+ * Salvage từ mobile-app/driver-app (Nguyễn Hữu Phú, PR #4) - app riêng bị gỡ
+ * trong refactor "1 app 2 vai trò". Phần authApi.login thật + token persist
+ * caller-app đã có sẵn từ trước (cùng nguồn) nên không trùng lặp; giữ lại
+ * các endpoint driver mới mà backend PR #4 bổ sung.
+ */
+export const dispatchApi = {
+  accept: (dispatchId) => request(`/dispatch/${dispatchId}/accept`, { method: 'POST' }),
+  reject: (dispatchId) => request(`/dispatch/${dispatchId}/reject`, { method: 'POST' }),
+  /** status: ON_SCENE | TRANSPORTING | AT_HOSPITAL | RETURNING | AVAILABLE */
+  setTripStatus: (tripId, status) =>
+    request(`/dispatch/trips/${tripId}/status`, { method: 'PATCH', body: { status } }),
+};
+
+export const ambulanceApi = {
+  postLocation: (ambulanceId, data) =>
+    request(`/ambulances/${ambulanceId}/location`, { method: 'POST', body: data }),
+};
