@@ -15,3 +15,9 @@ export const hospitalsApi = impl.hospitalsApi;
 
 // Token chỉ có ý nghĩa với backend thật; mock bỏ qua nhưng vẫn an toàn khi gọi.
 export const setAuthToken = real.setAuthToken;
+
+// Driver endpoints (salvage từ driver-app của Phú, PR #4): chỉ tồn tại ở backend thật.
+// Driver UI (D-01..D-09) tạm chạy mock scheduler riêng trong store/driverShift.js (G3),
+// sẽ chuyển sang gọi các API này khi nối backend thật.
+export const dispatchApi = real.dispatchApi;
+export const ambulanceApi = real.ambulanceApi;

@@ -1,7 +1,7 @@
-﻿/**
- * Cấu hình môi trường cho driver-app.
+/**
+ * Cấu hình môi trường cho app SmartEMS (caller + driver, "1 app 2 vai trò").
  * Expo tự động expose biến EXPO_PUBLIC_* từ file .env vào process.env lúc build.
- * Muốn đổi giá trị: sửa driver-app/.env (KHÔNG commit file .env), đừng sửa file này.
+ * Muốn đổi giá trị: sửa mobile-app/.env (KHÔNG commit file .env), đừng sửa file này.
  */
 export const ENV = {
   /** Địa chỉ REST API của backend FastAPI. 10.0.2.2 = localhost máy tính (Android emulator). */

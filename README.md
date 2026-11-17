@@ -1,6 +1,6 @@
 # SmartEMS - Real-Time Emergency Dispatch & Ambulance Management
 
-Capstone 1 (CMU-SE 450). Modular monolith: FastAPI + PostgreSQL/PostGIS + Redis + WebSocket, React dispatcher dashboard, two React Native (Expo) apps.
+Capstone 1 (CMU-SE 450). Modular monolith: FastAPI + PostgreSQL/PostGIS + Redis + WebSocket, React dispatcher dashboard, one React Native (Expo) app ("1 app 2 vai trò": caller + driver).
 
 ## Quick start
 ```bash
@@ -25,7 +25,7 @@ docker compose exec backend python -m scripts.create_admin admin@example.com 'Ch
 |---|---|
 | `backend/` | FastAPI app (api -> services -> models; pure `algorithms/` and `domain/`) |
 | `dispatcher-web/` | React (Vite) dispatcher / admin dashboard |
-| `caller-app/`, `driver-app/` | React Native apps (see each README to generate the Expo project) |
+| `mobile-app/` | Expo app "1 app 2 vai trò" (caller + driver); `cd mobile-app && npm install && npx expo start` |
 | `database/` | PostGIS extension init + seed data (schema lives in Alembic) |
 | `docker/` | nginx, OSRM, postgres helpers |
 | `tools/` | GPS simulator for demo/testing |
